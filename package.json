@@ -1,8 +1,8 @@
 {
-  "name": "bms-node",
+  "name": "@vaibhav-sf/bms-node-backend",
   "version": "1.0.0",
   "description": "A RESTful backend API for managing books, built with **Node.js** and **Express.js**. The API provides endpoints to create, read, update, and delete book records.",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,6 +16,9 @@
     "url": "https://github.com/vaibhav-sf/BMS-Node-Backend/issues"
   },
   "homepage": "https://github.com/vaibhav-sf/BMS-Node-Backend#readme",
+  "publishConfig": {
+  "registry": "https://npm.pkg.github.com"
+},
   "dependencies": {
     "express": "^5.2.1"
   }
