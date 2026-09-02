@@ -1,48 +1,46 @@
 # 📚 Book Management System — Backend
 
-A RESTful backend API for managing books, built with **Node.js** and **Express.js**. The API provides endpoints to create, read, update, and delete book records.
+A simple RESTful backend API for managing books, built with **Node.js** and **Express.js**.
+
+This project demonstrates the fundamentals of building a backend API, including Express routing, RESTful CRUD operations, request logging, JSON request handling, modular routing, and centralized error handling.
 
 ## 🚀 Features
 
-* RESTful API architecture
-* Create, read, update, and delete books
-* Request logging middleware
-* Centralized error handling
-* JSON request and response handling
-* Modular Express.js routing
-* Environment-based configuration
-* GitHub Packages integration
+- RESTful API architecture
+- Create, read, update, and delete books
+- Get a book by ID
+- Request logging middleware
+- Centralized error handling
+- 404 route handling
+- JSON request and response handling
+- Modular Express.js routing
+- In-memory book data storage
 
 ## 🛠️ Tech Stack
 
-* **Node.js** — JavaScript runtime
-* **Express.js** — Web framework
-* **npm** — Package management
-* **JavaScript** — Programming language
-* **Git & GitHub** — Version control and repository management
-* **GitHub Packages** — Package registry
+- **Node.js** — JavaScript runtime
+- **Express.js** — Web framework
+- **JavaScript** — Programming language
+- **npm** — Package management
+- **Git & GitHub** — Version control and repository management
 
 ## 📁 Project Structure
 
 ```text
 BMS-Node-Backend/
 │
-├── src/
-│   ├── controllers/
-│   │   └── bookController.js
-│   │
-│   ├── middleware/
-│   │   ├── logger.js
-│   │   └── errorHandler.js
-│   │
-│   ├── routes/
-│   │   └── bookRoutes.js
-│   │
-│   └── server.js
+├── middleware/
+│   ├── logger.js
+│   └── errorHandler.js
 │
+├── routes/
+│   └── bookRoutes.js
+│
+├── node_modules/
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
+├── server.js
 └── README.md
 ```
 
@@ -52,23 +50,23 @@ BMS-Node-Backend/
 
 Make sure you have the following installed:
 
-* Node.js
-* npm
-* Git
+- Node.js
+- npm
+- Git
 
-### Clone the repository
+### Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/vaibhav-sf/BMS-Node-Backend.git
 ```
 
-### Navigate to the project
+### Navigate to the Project
 
 ```bash
 cd BMS-Node-Backend
 ```
 
-### Install dependencies
+### Install Dependencies
 
 ```bash
 npm install
@@ -76,16 +74,10 @@ npm install
 
 ## ▶️ Running the Application
 
-Start the development server:
+Start the server with:
 
 ```bash
-npm run dev
-```
-
-Or start the application normally:
-
-```bash
-npm start
+node server.js
 ```
 
 The API will be available at:
@@ -94,44 +86,111 @@ The API will be available at:
 http://localhost:3000
 ```
 
+When the server starts successfully, you should see:
+
+```text
+Server is running on http://localhost:3000
+```
+
 ## 🔗 API Endpoints
 
 ### Books
 
-| Method | Endpoint     | Description       |
-| ------ | ------------ | ----------------- |
-| GET    | `/books`     | Get all books     |
-| GET    | `/books/:id` | Get a book by ID  |
-| POST   | `/books`     | Create a new book |
-| PUT    | `/books/:id` | Update a book     |
-| DELETE | `/books/:id` | Delete a book     |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/books` | Get all books |
+| GET | `/books/:id` | Get a book by ID |
+| POST | `/books` | Create a new book |
+| PUT | `/books/:id` | Update a book |
+| DELETE | `/books/:id` | Delete a book |
 
-### Example Book
+## 📖 Book Data
+
+The application currently uses an in-memory array to store books.
+
+Example:
 
 ```json
 {
   "id": 1,
-  "title": "The Alchemist",
-  "author": "Paulo Coelho",
-  "price": 299
+  "title": "Ramayana",
+  "author": "Valmiki",
+  "year": 1500
 }
+```
+
+Initial books:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Ramayana",
+    "author": "Valmiki",
+    "year": 1500
+  },
+  {
+    "id": 2,
+    "title": "Mahabharata",
+    "author": "Vyasa",
+    "year": 1400
+  }
+]
 ```
 
 ## 📡 API Usage
 
-### Get all books
+### Get All Books
 
 ```http
 GET /books
 ```
 
-### Get a book
+Example response:
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Ramayana",
+    "author": "Valmiki",
+    "year": 1500
+  },
+  {
+    "id": 2,
+    "title": "Mahabharata",
+    "author": "Vyasa",
+    "year": 1400
+  }
+]
+```
+
+### Get a Book by ID
 
 ```http
 GET /books/1
 ```
 
-### Create a book
+Example response:
+
+```json
+{
+  "id": 1,
+  "title": "Ramayana",
+  "author": "Valmiki",
+  "year": 1500
+}
+```
+
+If the book does not exist:
+
+```json
+{
+  "message": "Book not found"
+}
+```
+
+### Create a Book
 
 ```http
 POST /books
@@ -144,70 +203,159 @@ Request body:
 {
   "title": "Atomic Habits",
   "author": "James Clear",
-  "price": 499
+  "year": 2018
 }
 ```
 
-### Update a book
+Example response:
+
+```json
+{
+  "id": 3,
+  "title": "Atomic Habits",
+  "author": "James Clear",
+  "year": 2018
+}
+```
+
+### Update a Book
 
 ```http
 PUT /books/1
 Content-Type: application/json
 ```
 
-### Delete a book
+Request body:
+
+```json
+{
+  "title": "Ramayana - Updated",
+  "author": "Valmiki",
+  "year": 1500
+}
+```
+
+### Delete a Book
 
 ```http
 DELETE /books/1
 ```
 
+Example response:
+
+```json
+{
+  "message": "Book deleted successfully",
+  "book": {
+    "id": 1,
+    "title": "Ramayana",
+    "author": "Valmiki",
+    "year": 1500
+  }
+}
+```
+
 ## 🧱 Middleware
 
-The application uses Express middleware for handling common request-processing tasks.
+The application uses Express middleware to handle common request-processing tasks.
+
+### JSON Middleware
+
+Express's built-in JSON middleware is used to parse JSON request bodies:
+
+```javascript
+app.use(express.json());
+```
+
+This allows data sent in a POST or PUT request to be accessed through:
+
+```javascript
+req.body
+```
 
 ### Request Logger
 
-Logs incoming requests with their HTTP method and URL.
+The custom logger middleware records incoming requests by logging the HTTP method and URL.
+
+Example:
 
 ```text
 GET /books
+GET /books/1
 POST /books
 DELETE /books/1
 ```
 
-### Error Handler
+### 404 Middleware
 
-A centralized error-handling middleware manages application errors and returns consistent JSON responses.
+A fallback middleware handles requests to routes that do not exist.
 
 Example:
 
 ```json
 {
-  "message": "Book not found"
+  "message": "Route not found"
 }
 ```
 
-## 📦 Package Management
+### Error Handler
 
-Project dependencies are managed using npm. GitHub Packages is used for package registry integration where required.
-
-## 🔐 Environment Variables
-
-Environment-specific configuration can be stored in a `.env` file.
+A centralized error-handling middleware handles application errors and returns a consistent response.
 
 Example:
 
-```env
-PORT=3000
+```json
+{
+  "message": "Internal Server Error"
+}
 ```
 
-> Do not commit sensitive environment variables or credentials to the repository.
+## 🗂️ Modular Routing
+
+Book-related routes are separated into:
+
+```text
+routes/bookRoutes.js
+```
+
+The router is connected to the main Express application using:
+
+```javascript
+app.use("/books", bookRoutes);
+```
+
+This keeps `server.js` clean and makes the API easier to maintain.
+
+## 📦 Package Management
+
+Project dependencies are managed using **npm**.
+
+The main dependency currently used by the application is:
+
+- Express.js
+
+Dependency information is stored in:
+
+```text
+package.json
+```
+
+and exact installed dependency versions are tracked in:
+
+```text
+package-lock.json
+```
 
 ## 🧪 Testing the API
 
-You can test the API using tools such as **Postman**, **Insomnia**, or any REST API client.
+The API can be tested using tools such as:
 
-Test the following operations:
+- Postman
+- Insomnia
+- Browser
+- Any REST API client
+
+Test the following endpoints:
 
 ```text
 GET     /books
@@ -217,15 +365,33 @@ PUT     /books/:id
 DELETE  /books/:id
 ```
 
-## 📌 Future Improvements
+Additional routes for testing middleware:
 
-* Add MongoDB/MySQL database integration
-* Add input validation
-* Add authentication and authorization
-* Add pagination and search
-* Add automated API tests
-* Add API documentation with Swagger
+```text
+GET     /
+GET     /error
+GET     /unknown-route
+```
+
+## 📌 Current Limitations
+
+- Book data is stored in memory.
+- Data is reset whenever the server restarts.
+- No database is currently connected.
+- Input validation has not been implemented.
+- Authentication and authorization are not implemented.
+
+## 🚀 Future Improvements
+
+- Add MongoDB or MySQL database integration
+- Add input validation
+- Add authentication and authorization
+- Add pagination and search
+- Add automated API tests
+- Add API documentation with Swagger
 
 ## 👨‍💻 Author
 
 **Vaibhav Sharma**
+
+GitHub: [vaibhav-sf](https://github.com/vaibhav-sf)
