@@ -19,7 +19,7 @@ const books = [
 
 router.get("/", (req, res) => {
     res.json(books)
-})
+});
 
 router.get("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -32,7 +32,7 @@ router.get("/:id", (req, res) => {
         )
     }
     res.json(book)
-})
+});
 
 router.post("/", (req, res) => {
     const {title, author, year} = req.body;
@@ -41,10 +41,10 @@ router.post("/", (req, res) => {
         title,
         author,
         year
-    }
+    };
     books.push(newBook)
     res.status(201).json(newBook)
-})
+});
 
 router.put("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -61,7 +61,7 @@ router.put("/:id", (req, res) => {
     book.author = author;
     book.year = year;
     res.json(book);
-})
+});
 
 router.delete("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -75,7 +75,7 @@ router.delete("/:id", (req, res) => {
     res.json({
         message: "Book deleted successfully",
         book: deleteBook[0]
-    })
-})
+    });
+});
 
 module.exports = router;

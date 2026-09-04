@@ -2,7 +2,7 @@ const express = require("express");
 const logger = require("./middleware/logger.js");
 const errorHandler = require("./middleware/errorHandler.js");
 const bookRoutes = require("./routes/bookRoutes.js");
-const app = express()
+const app = express();
 
 let port = 3000
 
@@ -12,7 +12,7 @@ app.use("/books", bookRoutes);
 
 app.get("/", (req, res) => {
     res.send("BMS backend server is running");
-})
+});
 
 app.get("/error", (req, res, next) => {
     const error = new Error("This is a test error");
@@ -29,4 +29,4 @@ app.use(errorHandler);
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`)
-})
+});
