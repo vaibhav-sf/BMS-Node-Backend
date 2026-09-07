@@ -1,397 +1,370 @@
 # 📚 Book Management System — Backend
 
-A simple RESTful backend API for managing books, built with **Node.js** and **Express.js**.
-
-This project demonstrates the fundamentals of building a backend API, including Express routing, RESTful CRUD operations, request logging, JSON request handling, modular routing, and centralized error handling.
+A simple RESTful backend API for a Book Management System built using Node.js and Express.js, with a PostgreSQL database schema and SQL scripts for database design and normalization.
 
 ## 🚀 Features
 
-- RESTful API architecture
-- Create, read, update, and delete books
-- Get a book by ID
-- Request logging middleware
-- Centralized error handling
-- 404 route handling
-- JSON request and response handling
-- Modular Express.js routing
-- In-memory book data storage
+- RESTful API using Node.js and Express.js
+- Book CRUD operations
+- Modular Express routes
+- Custom middleware
+- Error handling middleware
+- Request validation
+- PostgreSQL database design
+- Normalized database schema up to 3NF
+- SQL scripts for schema creation, sample data, and queries
+- Git and GitHub based version control
+- API testing using Postman
 
 ## 🛠️ Tech Stack
 
-- **Node.js** — JavaScript runtime
-- **Express.js** — Web framework
-- **JavaScript** — Programming language
-- **npm** — Package management
-- **Git & GitHub** — Version control and repository management
+- Node.js
+- Express.js
+- PostgreSQL
+- SQL
+- JavaScript
+- Postman
+- Git & GitHub
+- VS Code
+- SQLTools Extension
 
 ## 📁 Project Structure
 
-```text
-BMS-Node-Backend/
-│
-├── middleware/
-│   ├── logger.js
-│   └── errorHandler.js
-│
-├── routes/
-│   └── bookRoutes.js
-│
-├── node_modules/
-├── .gitignore
-├── package.json
-├── package-lock.json
-├── server.js
-└── README.md
-```
+    BMS-Node/
+    ├── database/
+    │   ├── schema.sql
+    │   ├── seed.sql
+    │   └── queries.sql
+    ├── middleware/
+    │   └── errorHandler.js
+    ├── routes/
+    │   └── books.js
+    ├── controllers/
+    ├── package.json
+    ├── server.js
+    └── README.md
 
-## ⚙️ Installation
+## 🗄️ Database Design
 
-### Prerequisites
+The Book Management System uses a relational PostgreSQL database.
 
-Make sure you have the following installed:
+The database contains three main tables:
 
-- Node.js
-- npm
-- Git
+### Authors
 
-### Clone the Repository
+Stores information about book authors.
 
-```bash
-git clone https://github.com/vaibhav-sf/BMS-Node-Backend.git
-```
+Fields:
 
-### Navigate to the Project
+- author_id — Primary Key
+- first_name
+- last_name
+- author_email — Unique
+- author_country
+- created_at
 
-```bash
-cd BMS-Node-Backend
-```
+### Categories
 
-### Install Dependencies
+Stores different categories of books.
 
-```bash
-npm install
-```
+Fields:
 
-## ▶️ Running the Application
-
-Start the server with:
-
-```bash
-node server.js
-```
-
-The API will be available at:
-
-```text
-http://localhost:3000
-```
-
-When the server starts successfully, you should see:
-
-```text
-Server is running on http://localhost:3000
-```
-
-## 🔗 API Endpoints
+- category_id — Primary Key
+- category_name
+- created_at
 
 ### Books
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/books` | Get all books |
-| GET | `/books/:id` | Get a book by ID |
-| POST | `/books` | Create a new book |
-| PUT | `/books/:id` | Update a book |
-| DELETE | `/books/:id` | Delete a book |
+Stores information about books.
 
-## 📖 Book Data
+Fields:
 
-The application currently uses an in-memory array to store books.
+- book_id — Primary Key
+- title
+- book_isbn — Unique
+- published_year
+- book_type
+- page_count
+- file_size
+- author_id — Foreign Key
+- category_id — Foreign Key
+- created_at
 
-Example:
+## 🔗 Database Relationships
 
-```json
-{
-  "id": 1,
-  "title": "Ramayana",
-  "author": "Valmiki",
-  "year": 1500
-}
-```
+The database follows these relationships:
 
-Initial books:
+    Authors 1 ─────────── N Books
 
-```json
-[
-  {
-    "id": 1,
-    "title": "Ramayana",
-    "author": "Valmiki",
-    "year": 1500
-  },
-  {
-    "id": 2,
-    "title": "Mahabharata",
-    "author": "Vyasa",
-    "year": 1400
-  }
-]
-```
+    Categories 1 ──────── N Books
 
-## 📡 API Usage
+One author can have multiple books.
+
+One category can contain multiple books.
+
+The Books table contains foreign keys that connect each book with its author and category.
+
+    books.author_id
+            ↓
+    authors.author_id
+
+    books.category_id
+            ↓
+    categories.category_id
+
+## 🔑 Keys
+
+### Primary Keys
+
+Primary keys uniquely identify each record.
+
+- authors.author_id
+- categories.category_id
+- books.book_id
+
+### Foreign Keys
+
+Foreign keys create relationships between tables.
+
+- books.author_id references authors.author_id
+- books.category_id references categories.category_id
+
+## 📐 Database Normalization
+
+The database schema is normalized up to Third Normal Form (3NF).
+
+### First Normal Form — 1NF
+
+Each table contains atomic values.
+
+For example, author information is stored separately instead of storing multiple authors inside a single book record.
+
+### Second Normal Form — 2NF
+
+All non-key attributes depend on the complete primary key.
+
+The tables use single-column primary keys, which avoids partial dependency problems associated with composite keys.
+
+### Third Normal Form — 3NF
+
+Non-key attributes do not depend on other non-key attributes.
+
+For example, author information is stored in the Authors table instead of repeating author details in every Book record.
+
+This reduces data redundancy and improves data consistency.
+
+## 📜 SQL Files
+
+The database folder contains three SQL files.
+
+### schema.sql
+
+Contains SQL commands used to create the database tables, primary keys, foreign keys, constraints, and relationships.
+
+### seed.sql
+
+Contains sample data for:
+
+- Authors
+- Categories
+- Books
+
+### queries.sql
+
+Contains SQL queries used to test and interact with the database, including:
+
+- SELECT
+- JOIN
+- INSERT
+- UPDATE
+- DELETE
+- Verification queries
+
+## 🐘 PostgreSQL Setup
+
+Create the PostgreSQL database:
+
+    CREATE DATABASE bms;
+
+Connect to the database:
+
+    \c bms
+
+Run the schema script using VS Code SQLTools or PostgreSQL:
+
+    schema.sql
+
+Then insert sample data using:
+
+    seed.sql
+
+Queries and testing can be performed using:
+
+    queries.sql
+
+## 🔍 Example Database Query
+
+The following query retrieves books along with their authors and categories:
+
+    SELECT
+        books.title,
+        authors.first_name,
+        authors.last_name,
+        categories.category_name
+    FROM books
+    JOIN authors
+        ON books.author_id = authors.author_id
+    JOIN categories
+        ON books.category_id = categories.category_id;
+
+## 📊 Sample Database Data
+
+Example authors include:
+
+- Valmiki Rishi
+- Kalidasa Rishi
+- William Shakespeare
+- Jane Austen
+- Mark Twain
+
+Example categories include:
+
+- Religious
+- Poetry
+- Romance
+- Adventure
+- Comedy
+
+Example books include:
+
+- Ramayana
+- Mahabharata
+- Romeo and Juliet
+- Pride and Prejudice
+- Adventures of Huckleberry Finn
+
+## 🌐 API Endpoints
 
 ### Get All Books
 
-```http
-GET /books
-```
+    GET /books
 
-Example response:
+### Get Book By ID
 
-```json
-[
-  {
-    "id": 1,
-    "title": "Ramayana",
-    "author": "Valmiki",
-    "year": 1500
-  },
-  {
-    "id": 2,
-    "title": "Mahabharata",
-    "author": "Vyasa",
-    "year": 1400
-  }
-]
-```
+    GET /books/:id
 
-### Get a Book by ID
+### Create Book
 
-```http
-GET /books/1
-```
+    POST /books
 
-Example response:
+### Update Book
 
-```json
-{
-  "id": 1,
-  "title": "Ramayana",
-  "author": "Valmiki",
-  "year": 1500
-}
-```
+    PUT /books/:id
 
-If the book does not exist:
+### Delete Book
 
-```json
-{
-  "message": "Book not found"
-}
-```
+    DELETE /books/:id
 
-### Create a Book
+## 🧩 Middleware
 
-```http
-POST /books
-Content-Type: application/json
-```
+The application uses middleware for handling common request and error-processing tasks.
 
-Request body:
+Examples include:
 
-```json
-{
-  "title": "Atomic Habits",
-  "author": "James Clear",
-  "year": 2018
-}
-```
+- Request validation
+- Error handling
+- HTTP status code handling
 
-Example response:
+## 🛣️ Modular Routing
 
-```json
-{
-  "id": 3,
-  "title": "Atomic Habits",
-  "author": "James Clear",
-  "year": 2018
-}
-```
+Routes are organized into separate modules to keep the application maintainable and scalable.
 
-### Update a Book
-
-```http
-PUT /books/1
-Content-Type: application/json
-```
-
-Request body:
-
-```json
-{
-  "title": "Ramayana - Updated",
-  "author": "Valmiki",
-  "year": 1500
-}
-```
-
-### Delete a Book
-
-```http
-DELETE /books/1
-```
-
-Example response:
-
-```json
-{
-  "message": "Book deleted successfully",
-  "book": {
-    "id": 1,
-    "title": "Ramayana",
-    "author": "Valmiki",
-    "year": 1500
-  }
-}
-```
-
-## 🧱 Middleware
-
-The application uses Express middleware to handle common request-processing tasks.
-
-### JSON Middleware
-
-Express's built-in JSON middleware is used to parse JSON request bodies:
-
-```javascript
-app.use(express.json());
-```
-
-This allows data sent in a POST or PUT request to be accessed through:
-
-```javascript
-req.body
-```
-
-### Request Logger
-
-The custom logger middleware records incoming requests by logging the HTTP method and URL.
-
-Example:
-
-```text
-GET /books
-GET /books/1
-POST /books
-DELETE /books/1
-```
-
-### 404 Middleware
-
-A fallback middleware handles requests to routes that do not exist.
-
-Example:
-
-```json
-{
-  "message": "Route not found"
-}
-```
-
-### Error Handler
-
-A centralized error-handling middleware handles application errors and returns a consistent response.
-
-Example:
-
-```json
-{
-  "message": "Internal Server Error"
-}
-```
-
-## 🗂️ Modular Routing
-
-Book-related routes are separated into:
-
-```text
-routes/bookRoutes.js
-```
-
-The router is connected to the main Express application using:
-
-```javascript
-app.use("/books", bookRoutes);
-```
-
-This keeps `server.js` clean and makes the API easier to maintain.
+Book-related routes are separated from the main server configuration.
 
 ## 📦 Package Management
 
-Project dependencies are managed using **npm**.
+The project uses npm for package management.
 
-The main dependency currently used by the application is:
+Install dependencies:
 
-- Express.js
+    npm install
 
-Dependency information is stored in:
+Start the application:
 
-```text
-package.json
-```
+    npm start
 
-and exact installed dependency versions are tracked in:
+## 🧪 Testing
 
-```text
-package-lock.json
-```
+API endpoints can be tested using Postman.
 
-## 🧪 Testing the API
+Database queries can be tested using:
 
-The API can be tested using tools such as:
+- PostgreSQL psql
+- VS Code SQLTools
 
-- Postman
-- Insomnia
-- Browser
-- Any REST API client
+Database verification can be performed using queries such as:
 
-Test the following endpoints:
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public';
 
-```text
-GET     /books
-GET     /books/:id
-POST    /books
-PUT     /books/:id
-DELETE  /books/:id
-```
+## 💾 Git & GitHub
 
-Additional routes for testing middleware:
+Git is used to maintain version history and GitHub is used as a remote backup and collaboration platform.
 
-```text
-GET     /
-GET     /error
-GET     /unknown-route
-```
+The database SQL scripts are committed to GitHub along with the application source code.
 
-## 📌 Current Limitations
+Example workflow:
 
-- Book data is stored in memory.
-- Data is reset whenever the server restarts.
-- No database is currently connected.
-- Input validation has not been implemented.
-- Authentication and authorization are not implemented.
+    git status
 
-## 🚀 Future Improvements
+    git add .
 
-- Add MongoDB or MySQL database integration
-- Add input validation
-- Add authentication and authorization
-- Add pagination and search
-- Add automated API tests
-- Add API documentation with Swagger
+    git commit -m "feat: design and normalize BMS database schema"
+
+    git push
+
+
+## 🔮 Future Improvements
+
+- Connect the Express API directly to PostgreSQL.
+- Implement database-backed API CRUD operations.
+- Add PostgreSQL connection pooling.
+- Add authentication and authorization.
+- Add database migrations.
+- Add automated API and database tests.
+- Improve validation and error handling.
+
+## 🎯 Assignment
+
+This project includes the following database design activities:
+
+1. Create tables for Book, Author, and Category.
+2. Define relationships between the tables.
+3. Normalize the schema up to 3NF.
+4. Write and execute SQL queries using VS Code SQLTools.
+5. Maintain GitHub-based backups using Git.
+6. Commit the database SQL scripts to GitHub.
 
 ## 👨‍💻 Author
 
-**Vaibhav Sharma**
+Vaibhav-SF
 
-GitHub: [vaibhav-sf](https://github.com/vaibhav-sf)
+## 📌 Status
+
+Assignment 10 — Database Design and Normalization
+
+Completed:
+- PostgreSQL database setup
+- Authors table
+- Categories table
+- Books table
+- Primary keys
+- Foreign keys
+- One-to-many relationships
+- 3NF normalization
+- Sample data
+- JOIN queries
+- INSERT / UPDATE / DELETE testing
+- SQLTools execution
+- SQL scripts for GitHub backup
