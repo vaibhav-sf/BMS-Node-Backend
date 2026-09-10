@@ -8,7 +8,7 @@ VALUES (1, 'Valmiki', 'Rishi', 'valimiki@gmail.com', 'India'),
 INSERT INTO categories (category_id, category_name)
 VALUES 
 (1, 'Religious'),
-(2, 'Religious'),
+(2, 'Action'),
 (3, 'Romance'),
 (4, 'Adventure'),
 (5, 'Comedy');

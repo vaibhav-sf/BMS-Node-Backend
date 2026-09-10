@@ -5,12 +5,13 @@ A simple RESTful backend API for a Book Management System built using Node.js an
 ## 🚀 Features
 
 - RESTful API using Node.js and Express.js
-- Book CRUD operations
+- Book CRUD operations (in-memory)
 - Modular Express routes
-- Custom middleware
-- Error handling middleware
-- Request validation
+- Custom middleware (request logger and error handler)
 - PostgreSQL database design
+- Identity primary keys with auto-generation
+- Foreign key constraints with ON DELETE RESTRICT
+- Indexes on foreign key columns
 - Normalized database schema up to 3NF
 - SQL scripts for schema creation, sample data, and queries
 - Git and GitHub based version control
@@ -36,10 +37,11 @@ A simple RESTful backend API for a Book Management System built using Node.js an
     │   ├── seed.sql
     │   └── queries.sql
     ├── middleware/
+    │   ├── logger.js
     │   └── errorHandler.js
     ├── routes/
-    │   └── books.js
-    ├── controllers/
+    │   └── bookRoutes.js
+    ├── .gitignore
     ├── package.json
     ├── server.js
     └── README.md
@@ -56,7 +58,7 @@ Stores information about book authors.
 
 Fields:
 
-- author_id — Primary Key
+- author_id — Primary Key (Identity, auto-generated)
 - first_name
 - last_name
 - author_email — Unique
@@ -69,8 +71,8 @@ Stores different categories of books.
 
 Fields:
 
-- category_id — Primary Key
-- category_name
+- category_id — Primary Key (Identity, auto-generated)
+- category_name — Unique
 - created_at
 
 ### Books
@@ -79,15 +81,15 @@ Stores information about books.
 
 Fields:
 
-- book_id — Primary Key
+- book_id — Primary Key (Identity, auto-generated)
 - title
 - book_isbn — Unique
 - published_year
-- book_type
-- page_count
-- file_size
-- author_id — Foreign Key
-- category_id — Foreign Key
+- book_type — CHECK constraint (printed book / ebook)
+- page_count — CHECK constraint (> 0), nullable
+- file_size — DECIMAL(10, 2), CHECK constraint (> 0), nullable
+- author_id — Foreign Key (ON DELETE RESTRICT)
+- category_id — Foreign Key (ON DELETE RESTRICT)
 - created_at
 
 ## 🔗 Database Relationships
@@ -126,8 +128,15 @@ Primary keys uniquely identify each record.
 
 Foreign keys create relationships between tables.
 
-- books.author_id references authors.author_id
-- books.category_id references categories.category_id
+- books.author_id references authors.author_id (ON DELETE RESTRICT)
+- books.category_id references categories.category_id (ON DELETE RESTRICT)
+
+### Indexes
+
+Indexes are created on foreign key columns to improve query performance.
+
+- idx_author_id on books(author_id)
+- idx_category_id on books(category_id)
 
 ## 📐 Database Normalization
 
@@ -159,7 +168,7 @@ The database folder contains three SQL files.
 
 ### schema.sql
 
-Contains SQL commands used to create the database tables, primary keys, foreign keys, constraints, and relationships.
+Contains SQL commands used to create the database tables, identity primary keys, foreign keys, CHECK constraints, UNIQUE constraints, indexes, and relationships.
 
 ### seed.sql
 
@@ -267,13 +276,15 @@ Example books include:
 
 ## 🧩 Middleware
 
-The application uses middleware for handling common request and error-processing tasks.
+The application uses custom middleware for request processing.
 
-Examples include:
+### logger.js
 
-- Request validation
-- Error handling
-- HTTP status code handling
+Logs every incoming request with the HTTP method and URL.
+
+### errorHandler.js
+
+Catches unhandled errors and returns a 500 Internal Server Error response.
 
 ## 🛣️ Modular Routing
 
@@ -291,7 +302,7 @@ Install dependencies:
 
 Start the application:
 
-    npm start
+    node server.js
 
 ## 🧪 Testing
 
@@ -327,13 +338,14 @@ Example workflow:
 
 ## 🔮 Future Improvements
 
-- Connect the Express API directly to PostgreSQL.
-- Implement database-backed API CRUD operations.
+- Connect the Express API directly to PostgreSQL using an ORM.
+- Replace in-memory data with database-backed CRUD operations.
+- Add database migrations and seeders.
 - Add PostgreSQL connection pooling.
 - Add authentication and authorization.
-- Add database migrations.
+- Add request body validation middleware.
 - Add automated API and database tests.
-- Improve validation and error handling.
+- Use Docker to manage the database environment.
 
 ## 🎯 Assignment
 
@@ -352,15 +364,16 @@ Vaibhav-SF
 
 ## 📌 Status
 
-Assignment 10 — Database Design and Normalization
+Assignment 11 — Database Design and Normalization
 
 Completed:
 - PostgreSQL database setup
-- Authors table
-- Categories table
-- Books table
-- Primary keys
-- Foreign keys
+- Authors table with identity primary key
+- Categories table with UNIQUE category_name
+- Books table with CHECK constraints and DECIMAL file_size
+- Identity primary keys on all tables
+- Foreign keys with ON DELETE RESTRICT
+- Indexes on foreign key columns
 - One-to-many relationships
 - 3NF normalization
 - Sample data

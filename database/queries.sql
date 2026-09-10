@@ -18,12 +18,21 @@ JOIN categories
     ON books.category_id = categories.category_id;
 
 
--- 3. Update a book's category
+-- 3. Update a book's title
 UPDATE books
-SET books.title = 'Real Test Book'
+SET title = 'Real Test Book'
 WHERE book_id = 6;
 
 
 -- 4. Delete a test book
 DELETE FROM books
 WHERE book_id = 6;
+
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public';
+
+SELECT table_name, column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'public'
+ORDER BY table_name, ordinal_position;
