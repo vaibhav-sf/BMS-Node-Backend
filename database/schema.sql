@@ -1,4 +1,9 @@
 -- database: :memory:
+
+DROP TABLE IF EXISTS books;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS authors;
+
 CREATE TABLE authors(
     author_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
