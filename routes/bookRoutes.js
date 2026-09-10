@@ -34,10 +34,21 @@ router.get("/:id", (req, res) => {
     res.json(book)
 });
 
+let nextId = 3;
 router.post("/", (req, res) => {
     const {title, author, year} = req.body;
+    if (!title || !author || !year){
+        return res.status(400).json({
+            message: "Missing required fields"
+        });
+    }
+    if(typeof year !== "number"){
+        return res.status(400).json({
+            message: "Year must be a number"
+        });
+    }
     const newBook = {
-        id: books.length + 1,
+        id: nextId++,
         title,
         author,
         year
@@ -57,9 +68,9 @@ router.put("/:id", (req, res) => {
         )
     }
     const {title, author, year} = req.body;
-    book.title = title;
-    book.author = author;
-    book.year = year;
+    if (title !== undefined) book.title = title;
+    if (author !== undefined) book.author = author;
+    if (year  !== undefined) book.year  = year;
     res.json(book);
 });
 
