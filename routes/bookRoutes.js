@@ -1,81 +1,183 @@
 const express = require("express");
 const router = express.Router();
+const {
+     Book, Author, Category } = require("../models");
 
-const books = [
-    {
-        id: 1,
-        title: "Ramayana",
-        author: "Valmiki",
-        year: 1500
-    },
-    {
-        id: 2,
-        title: "Mahabharata",
-        author: "Vyasa",
-        year: 1400
+// GET all books
+router.get("/", async (req, res) => {
+    try {
+        const books = await Book.findAll({
+            include: [
+                {
+                    model: Author,
+                    attributes: ["author_id", "first_name", "last_name"]
+                },
+                {
+                    model: Category,
+                    attributes: ["category_id", "category_name"]
+                }
+            ]
+        });
+
+        res.json(books);
+    } catch (error) {
+        console.error("Error fetching books:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch books"
+        });
     }
-];
-
-
-router.get("/", (req, res) => {
-    res.json(books)
 });
 
-router.get("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const book = books.find(book => book.id === id)
-    if(!book){
-        return res.status(404).json(
-            {
+
+// GET book by ID
+router.get("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        const book = await Book.findByPk(id, {
+            include: [
+                {
+                    model: Author,
+                    attributes: ["author_id", "first_name", "last_name"]
+                },
+                {
+                    model: Category,
+                    attributes: ["category_id", "category_name"]
+                }
+            ]
+        });
+
+        if (!book) {
+            return res.status(404).json({
                 message: "Book not found"
-            }
-        )
+            });
+        }
+
+        res.json(book);
+    } catch (error) {
+        console.error("Error fetching book:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch book"
+        });
     }
-    res.json(book)
 });
 
-router.post("/", (req, res) => {
-    const {title, author, year} = req.body;
-    const newBook = {
-        id: books.length + 1,
-        title,
-        author,
-        year
-    };
-    books.push(newBook)
-    res.status(201).json(newBook)
+
+// POST create a new book
+router.post("/", async (req, res) => {
+    try {
+        const {
+            book_id,
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        } = req.body;
+
+        const newBook = await Book.create({
+            book_id,
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        });
+
+        res.status(201).json(newBook);
+    } catch (error) {
+        console.error("Error creating book:", error);
+
+        res.status(400).json({
+            message: "Failed to create book",
+            error: error.message
+        });
+    }
 });
 
-router.put("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const book = books.find(book => book.id === id);
-    if(!book){
-        return res.status(404).json(
-            {
+
+// PUT update a book
+router.put("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        const book = await Book.findByPk(id);
+
+        if (!book) {
+            return res.status(404).json({
                 message: "Book not found"
-            }
-        )
+            });
+        }
+
+        const {
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        } = req.body;
+
+        await book.update({
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        });
+
+        res.json(book);
+    } catch (error) {
+        console.error("Error updating book:", error);
+
+        res.status(400).json({
+            message: "Failed to update book",
+            error: error.message
+        });
     }
-    const {title, author, year} = req.body;
-    book.title = title;
-    book.author = author;
-    book.year = year;
-    res.json(book);
 });
 
-router.delete("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const bookIndex = books.findIndex(book => book.id === id);
-    if(bookIndex === -1){
-        return res.status(404).json({
-            message: "Book not found"
-        })
+
+// DELETE a book
+router.delete("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        const book = await Book.findByPk(id);
+
+        if (!book) {
+            return res.status(404).json({
+                message: "Book not found"
+            });
+        }
+
+        await book.destroy();
+
+        res.json({
+            message: "Book deleted successfully",
+            book
+        });
+    } catch (error) {
+        console.error("Error deleting book:", error);
+
+        res.status(500).json({
+            message: "Failed to delete book"
+        });
     }
-    const deleteBook = books.splice(bookIndex, 1);
-    res.json({
-        message: "Book deleted successfully",
-        book: deleteBook[0]
-    });
 });
+
 
 module.exports = router;
