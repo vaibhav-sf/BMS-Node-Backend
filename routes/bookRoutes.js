@@ -19,7 +19,7 @@ const books = [
 
 router.get("/", (req, res) => {
     res.json(books)
-})
+});
 
 router.get("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -32,19 +32,30 @@ router.get("/:id", (req, res) => {
         )
     }
     res.json(book)
-})
+});
 
+let nextId = 3;
 router.post("/", (req, res) => {
     const {title, author, year} = req.body;
+    if (!title || !author || !year){
+        return res.status(400).json({
+            message: "Missing required fields"
+        });
+    }
+    if(typeof year !== "number"){
+        return res.status(400).json({
+            message: "Year must be a number"
+        });
+    }
     const newBook = {
-        id: books.length + 1,
+        id: nextId++,
         title,
         author,
         year
-    }
+    };
     books.push(newBook)
     res.status(201).json(newBook)
-})
+});
 
 router.put("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -57,11 +68,11 @@ router.put("/:id", (req, res) => {
         )
     }
     const {title, author, year} = req.body;
-    book.title = title;
-    book.author = author;
-    book.year = year;
+    if (title !== undefined) book.title = title;
+    if (author !== undefined) book.author = author;
+    if (year  !== undefined) book.year  = year;
     res.json(book);
-})
+});
 
 router.delete("/:id", (req, res) => {
     const id = Number(req.params.id);
@@ -75,7 +86,7 @@ router.delete("/:id", (req, res) => {
     res.json({
         message: "Book deleted successfully",
         book: deleteBook[0]
-    })
-})
+    });
+});
 
 module.exports = router;
