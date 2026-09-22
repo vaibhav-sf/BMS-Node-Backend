@@ -1,383 +1,679 @@
-# 📚 Book Management System — Backend
+# 📚 BMS Microservices --- Assignment 14
 
-A simple RESTful backend API for a Book Management System built using Node.js and Express.js, with a PostgreSQL database schema and SQL scripts for database design and normalization.
+A **Microservices Architecture** implementation of the Book Management
+System (BMS) using **LoopBack 4**, with separate services for Books,
+Authors, and Categories.
 
-## 🚀 Features
+This project is being developed as **Assignment 14** to understand and
+implement microservices architecture, service-to-service communication,
+API Gateway, asynchronous messaging, observability, containerization,
+and AWS deployment.
 
-- RESTful API using Node.js and Express.js
-- Book CRUD operations (in-memory)
-- Modular Express routes
-- Custom middleware (request logger and error handler)
-- PostgreSQL database design
-- Identity primary keys with auto-generation
-- Foreign key constraints with ON DELETE RESTRICT
-- Indexes on foreign key columns
-- Normalized database schema up to 3NF
-- SQL scripts for schema creation, sample data, and queries
-- Git and GitHub based version control
-- API testing using Postman
+------------------------------------------------------------------------
 
-## 🛠️ Tech Stack
+## 🎯 Assignment Objective
 
-- Node.js
-- Express.js
-- PostgreSQL
-- SQL
-- JavaScript
-- Postman
-- Git & GitHub
-- VS Code
-- SQLTools Extension
+The objective of this assignment is to redesign the Book Management
+System from a monolithic application into independently deployable
+microservices.
+
+### Assignment Requirements
+
+1.  Decompose the BMS into independent microservices.
+2.  Implement communication between services.
+3.  Implement an API Gateway.
+4.  Implement asynchronous communication using a message queue.
+5.  Add centralized logging and observability.
+6.  Add monitoring and metrics.
+7.  Add distributed tracing.
+8.  Containerize the services.
+9.  Deploy the microservices architecture on AWS.
+10. Document the complete architecture and implementation.
+
+------------------------------------------------------------------------
+
+## 🏗️ Planned Architecture
+
+``` text
+                         ┌──────────────────┐
+                         │      Client      │
+                         └────────┬─────────┘
+                                  │
+                                  ▼
+                         ┌──────────────────┐
+                         │   API Gateway    │
+                         └────────┬─────────┘
+                                  │
+             ┌────────────────────┼────────────────────┐
+             │                    │                    │
+             ▼                    ▼                    ▼
+     ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
+     │ Books Service │    │Authors Service │    │Categories     │
+     │    :3001      │    │    :3002      │    │Service :3003  │
+     └───────┬───────┘    └───────┬───────┘    └───────┬───────┘
+             │                    │                    │
+             ▼                    ▼                    ▼
+       Books DB              Authors DB           Categories DB
+```
+
+Additional infrastructure planned:
+
+``` text
+                    ┌───────────────────────┐
+                    │     Message Queue     │
+                    │   RabbitMQ / Kafka    │
+                    └───────────┬───────────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+          Services          Event Consumers    Background Jobs
+
+
+Observability:
+
+Services
+   │
+   ├── Logs ──────────────► OpenSearch
+   ├── Metrics ───────────► Prometheus ───────► Grafana
+   └── Traces ────────────► OpenTelemetry ─────► Jaeger
+```
+
+------------------------------------------------------------------------
+
+## 🧩 Microservices
+
+### 1. Books Service
+
+Responsible for:
+
+-   Creating books
+-   Reading books
+-   Updating books
+-   Deleting books
+-   Book validation
+-   Book-related business logic
+-   Communication with other services when required
+
+Current status: **🚧 In Progress**
+
+### 2. Authors Service
+
+Responsible for:
+
+-   Author management
+-   Author CRUD operations
+-   Author-related business logic
+-   Providing author information to other services
+
+Current status: **⏳ Planned**
+
+### 3. Categories Service
+
+Responsible for:
+
+-   Category management
+-   Category CRUD operations
+-   Category-related business logic
+-   Providing category information to other services
+
+Current status: **⏳ Planned**
+
+------------------------------------------------------------------------
 
 ## 📁 Project Structure
 
-    BMS-Node/
-    ├── database/
-    │   ├── schema.sql
-    │   ├── seed.sql
-    │   └── queries.sql
-    ├── middleware/
-    │   ├── logger.js
-    │   └── errorHandler.js
-    ├── routes/
-    │   └── bookRoutes.js
-    ├── .gitignore
-    ├── package.json
-    ├── server.js
-    └── README.md
+The project uses a monorepo structure where each microservice is an
+independent LoopBack application.
+
+``` text
+BMS-Node/
+│
+├── services/
+│   ├── books-service/
+│   │   ├── src/
+│   │   │   ├── controllers/
+│   │   │   ├── datasources/
+│   │   │   ├── models/
+│   │   │   ├── repositories/
+│   │   │   ├── __tests__/
+│   │   │   ├── application.ts
+│   │   │   ├── index.ts
+│   │   │   ├── migrate.ts
+│   │   │   ├── openapi-spec.ts
+│   │   │   └── sequence.ts
+│   │   ├── Dockerfile
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── README.md
+│   │
+│   ├── authors-service/       # Planned
+│   └── categories-service/    # Planned
+│
+├── api-gateway/               # Planned
+│
+├── observability/             # Planned
+│   ├── prometheus/
+│   ├── grafana/
+│   ├── opensearch/
+│   └── jaeger/
+│
+└── README.md
+```
+
+------------------------------------------------------------------------
+
+# 🚀 Phase 1 --- Microservices Decomposition
+
+The original BMS application contains multiple domains:
+
+``` text
+Book
+Author
+Category
+```
+
+These domains are being separated into independent services.
+
+### Why separate services?
+
+#### Independent Deployment
+
+A change to the Books Service can be deployed without redeploying the
+Authors or Categories services.
+
+#### Independent Scaling
+
+A service receiving higher traffic can be scaled independently.
+
+Example:
+
+``` text
+Books Service
+├── Instance 1
+├── Instance 2
+└── Instance 3
+
+Authors Service
+└── Instance 1
+```
+
+#### Failure Isolation
 
-## 🗄️ Database Design
+A failure in one service does not necessarily bring down the complete
+application.
 
-The Book Management System uses a relational PostgreSQL database.
+Service dependencies must still be designed carefully because network
+failures can propagate between services.
 
-The database contains three main tables:
+------------------------------------------------------------------------
 
-### Authors
+# 🔗 Service-to-Service Communication
 
-Stores information about book authors.
+Microservices communicate through network-based interfaces rather than
+directly accessing another service's repository or database.
+
+For example:
 
-Fields:
+``` text
+Books Service
+      │
+      │ HTTP Request
+      ▼
+Authors Service
+      │
+      │ HTTP Response
+      ▼
+Books Service
+```
 
-- author_id — Primary Key (Identity, auto-generated)
-- first_name
-- last_name
-- author_email — Unique
-- author_country
-- created_at
+A synchronous REST request may be used when the Books Service
+immediately needs author information.
 
-### Categories
+Asynchronous communication through a message broker will be introduced
+later for event-driven use cases.
 
-Stores different categories of books.
+------------------------------------------------------------------------
 
-Fields:
+# 🌐 API Gateway
 
-- category_id — Primary Key (Identity, auto-generated)
-- category_name — Unique
-- created_at
+An API Gateway will act as the single entry point for external clients.
 
-### Books
+``` text
+Client
+  │
+  ▼
+API Gateway
+  │
+  ├── /books      → Books Service
+  ├── /authors    → Authors Service
+  └── /categories → Categories Service
+```
 
-Stores information about books.
+Planned responsibilities:
 
-Fields:
+-   Request routing
+-   Service discovery/routing configuration
+-   Centralized entry point
+-   Request/response handling
+-   Potential rate limiting and other cross-cutting concerns
 
-- book_id — Primary Key (Identity, auto-generated)
-- title
-- book_isbn — Unique
-- published_year
-- book_type — CHECK constraint (printed book / ebook)
-- page_count — CHECK constraint (> 0), nullable
-- file_size — DECIMAL(10, 2), CHECK constraint (> 0), nullable
-- author_id — Foreign Key (ON DELETE RESTRICT)
-- category_id — Foreign Key (ON DELETE RESTRICT)
-- created_at
+**Status:** ⏳ Planned
 
-## 🔗 Database Relationships
+------------------------------------------------------------------------
 
-The database follows these relationships:
+# 📨 Message Queue
 
-    Authors 1 ─────────── N Books
+Asynchronous communication will be introduced using a message broker
+such as **RabbitMQ or Kafka**.
 
-    Categories 1 ──────── N Books
+Example:
 
-One author can have multiple books.
+``` text
+Books Service
+      │
+      │ BookCreated event
+      ▼
+ Message Queue
+      │
+      ├──────────────► Authors-related consumer
+      │
+      └──────────────► Other consumers
+```
 
-One category can contain multiple books.
+Benefits:
 
-The Books table contains foreign keys that connect each book with its author and category.
+-   Loose coupling
+-   Asynchronous processing
+-   Event-driven architecture
+-   Better handling of background tasks
 
-    books.author_id
-            ↓
-    authors.author_id
+**Status:** ⏳ Planned
 
-    books.category_id
-            ↓
-    categories.category_id
+------------------------------------------------------------------------
 
-## 🔑 Keys
+# 📊 Observability
 
-### Primary Keys
+The assignment includes three major observability areas.
 
-Primary keys uniquely identify each record.
+## Logging
 
-- authors.author_id
-- categories.category_id
-- books.book_id
+Planned tools:
 
-### Foreign Keys
+-   Winston
+-   OpenSearch
 
-Foreign keys create relationships between tables.
+Architecture:
 
-- books.author_id references authors.author_id (ON DELETE RESTRICT)
-- books.category_id references categories.category_id (ON DELETE RESTRICT)
+``` text
+Microservices
+     │
+     │ Logs
+     ▼
+ OpenSearch
+```
 
-### Indexes
+Centralized logging will make it easier to search and analyze logs from
+multiple services.
 
-Indexes are created on foreign key columns to improve query performance.
+**Status:** ⏳ Planned
 
-- idx_author_id on books(author_id)
-- idx_category_id on books(category_id)
+------------------------------------------------------------------------
 
-## 📐 Database Normalization
+## Monitoring
 
-The database schema is normalized up to Third Normal Form (3NF).
+Planned tools:
 
-### First Normal Form — 1NF
+-   Prometheus
+-   Grafana
 
-Each table contains atomic values.
+Example metrics:
 
-For example, author information is stored separately instead of storing multiple authors inside a single book record.
+-   Request count
+-   Response time
+-   Error rate
+-   Service availability
+-   Throughput
 
-### Second Normal Form — 2NF
+Architecture:
 
-All non-key attributes depend on the complete primary key.
+``` text
+Services
+   │
+   ▼
+Prometheus
+   │
+   ▼
+Grafana
+```
 
-The tables use single-column primary keys, which avoids partial dependency problems associated with composite keys.
+**Status:** ⏳ Planned
 
-### Third Normal Form — 3NF
+------------------------------------------------------------------------
 
-Non-key attributes do not depend on other non-key attributes.
+## Distributed Tracing
 
-For example, author information is stored in the Authors table instead of repeating author details in every Book record.
+Planned tools:
 
-This reduces data redundancy and improves data consistency.
+-   OpenTelemetry
+-   Jaeger
 
-## 📜 SQL Files
+Example request flow:
 
-The database folder contains three SQL files.
+``` text
+Client
+  │
+  ▼
+API Gateway
+  │
+  ▼
+Books Service
+  │
+  ▼
+Authors Service
+```
 
-### schema.sql
+Distributed tracing will allow a request to be followed across multiple
+services.
 
-Contains SQL commands used to create the database tables, identity primary keys, foreign keys, CHECK constraints, UNIQUE constraints, indexes, and relationships.
+**Status:** ⏳ Planned
 
-### seed.sql
+------------------------------------------------------------------------
 
-Contains sample data for:
+# 🐳 Docker
 
-- Authors
-- Categories
-- Books
+Each microservice will be independently containerized.
 
-### queries.sql
+Example:
 
-Contains SQL queries used to test and interact with the database, including:
+``` text
+┌──────────────────────┐
+│ Books Service        │
+│ Docker Container     │
+└──────────────────────┘
 
-- SELECT
-- JOIN
-- INSERT
-- UPDATE
-- DELETE
-- Verification queries
+┌──────────────────────┐
+│ Authors Service      │
+│ Docker Container     │
+└──────────────────────┘
 
-## 🐘 PostgreSQL Setup
+┌──────────────────────┐
+│ Categories Service   │
+│ Docker Container     │
+└──────────────────────┘
+```
 
-Create the PostgreSQL database:
+The Books Service already has a generated:
 
-    CREATE DATABASE bms;
+``` text
+Dockerfile
+.dockerignore
+```
 
-Connect to the database:
+**Status:** 🚧 Available for Books Service; full containerized
+architecture pending.
 
-    \c bms
+------------------------------------------------------------------------
 
-Run the schema script using VS Code SQLTools or PostgreSQL:
+# ☁️ AWS Deployment
 
-    schema.sql
+The final architecture is planned for deployment on AWS.
 
-Then insert sample data using:
+Potential AWS components:
 
-    seed.sql
+  Requirement               AWS / Technology
+  ------------------------- -----------------------
+  Compute                   EC2 / ECS / Lambda
+  API entry                 API Gateway
+  Networking                VPC
+  Load balancing            Elastic Load Balancer
+  Relational database       RDS
+  NoSQL where appropriate   DynamoDB
+  Object storage            S3
+  Access control            IAM
+  Containers                Docker / ECS
 
-Queries and testing can be performed using:
+The exact deployment architecture will be finalized after the local
+microservices architecture is working.
 
-    queries.sql
+**Status:** ⏳ Planned
 
-## 🔍 Example Database Query
+------------------------------------------------------------------------
 
-The following query retrieves books along with their authors and categories:
+# 🛠️ Technology Stack
 
-    SELECT
-        books.title,
-        authors.first_name,
-        authors.last_name,
-        categories.category_name
-    FROM books
-    JOIN authors
-        ON books.author_id = authors.author_id
-    JOIN categories
-        ON books.category_id = categories.category_id;
+### Backend
 
-## 📊 Sample Database Data
+-   Node.js
+-   TypeScript
+-   LoopBack 4
+-   REST APIs
 
-Example authors include:
+### Database
 
-- Valmiki Rishi
-- Kalidasa Rishi
-- William Shakespeare
-- Jane Austen
-- Mark Twain
+-   PostgreSQL
+-   Database-per-service architecture planned
 
-Example categories include:
+### Communication
 
-- Religious
-- Poetry
-- Romance
-- Adventure
-- Comedy
+-   REST / HTTP
+-   RabbitMQ or Kafka planned for asynchronous communication
 
-Example books include:
+### API Gateway
 
-- Ramayana
-- Mahabharata
-- Romeo and Juliet
-- Pride and Prejudice
-- Adventures of Huckleberry Finn
+-   API Gateway implementation planned
 
-## 🌐 API Endpoints
+### Observability
 
-### Get All Books
+-   Winston
+-   OpenSearch
+-   Prometheus
+-   Grafana
+-   OpenTelemetry
+-   Jaeger
 
-    GET /books
+### Containerization
 
-### Get Book By ID
+-   Docker
 
-    GET /books/:id
+### Cloud
 
-### Create Book
+-   AWS
+-   EC2 / ECS / Lambda
+-   VPC
+-   IAM
+-   API Gateway
+-   RDS
 
-    POST /books
+------------------------------------------------------------------------
 
-### Update Book
+# 💻 Local Development
 
-    PUT /books/:id
+## Prerequisites
 
-### Delete Book
+Make sure the following are installed:
 
-    DELETE /books/:id
+``` text
+Node.js
+npm
+LoopBack CLI
+Git
+Docker
+PostgreSQL
+```
 
-## 🧩 Middleware
+Current development environment:
 
-The application uses custom middleware for request processing.
+``` text
+Node.js:     v22.18.0
+npm:         10.9.3
+LoopBack:    7.0.17
+```
 
-### logger.js
+------------------------------------------------------------------------
 
-Logs every incoming request with the HTTP method and URL.
+## Create a LoopBack Microservice
 
-### errorHandler.js
+Example:
 
-Catches unhandled errors and returns a 500 Internal Server Error response.
+``` powershell
+mkdir services
+cd services
+lb4 app books-service
+```
 
-## 🛣️ Modular Routing
+The generated Books Service is located at:
 
-Routes are organized into separate modules to keep the application maintainable and scalable.
+``` text
+services/books-service
+```
 
-Book-related routes are separated from the main server configuration.
+------------------------------------------------------------------------
 
-## 📦 Package Management
+## Run Books Service
 
-The project uses npm for package management.
+``` powershell
+cd services/books-service
+npm start
+```
 
-Install dependencies:
+Current development server:
 
-    npm install
+``` text
+http://127.0.0.1:3000
+```
 
-Start the application:
+Generated health/test endpoint:
 
-    node server.js
+``` text
+http://127.0.0.1:3000/ping
+```
 
-## 🧪 Testing
+Expected response:
 
-API endpoints can be tested using Postman.
+``` json
+{
+  "greeting": "Hello from LoopBack"
+}
+```
 
-Database queries can be tested using:
+The service will later use a dedicated port when multiple microservices
+are running simultaneously.
 
-- PostgreSQL psql
-- VS Code SQLTools
+------------------------------------------------------------------------
 
-Database verification can be performed using queries such as:
+# 🧪 Testing
 
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public';
+LoopBack generates a Mocha-based testing setup.
 
-## 💾 Git & GitHub
+Run tests with:
 
-Git is used to maintain version history and GitHub is used as a remote backup and collaboration platform.
+``` powershell
+npm test
+```
 
-The database SQL scripts are committed to GitHub along with the application source code.
+Build the service with:
 
-Example workflow:
+``` powershell
+npm run build
+```
 
-    git status
+Run linting with:
 
-    git add .
+``` powershell
+npm run lint
+```
 
-    git commit -m "feat: design and normalize BMS database schema"
+------------------------------------------------------------------------
 
-    git push
+# 🌿 Git Workflow
 
+Assignment 14 is developed on a dedicated branch:
 
-## 🔮 Future Improvements
+``` text
+main
+  │
+  └── 14th-assignment
+```
 
-- Connect the Express API directly to PostgreSQL using an ORM.
-- Replace in-memory data with database-backed CRUD operations.
-- Add database migrations and seeders.
-- Add PostgreSQL connection pooling.
-- Add authentication and authorization.
-- Add request body validation middleware.
-- Add automated API and database tests.
-- Use Docker to manage the database environment.
+Changes should be committed with meaningful messages.
 
-## 🎯 Assignment
+Example:
 
-This project includes the following database design activities:
+``` powershell
+git add .
+git commit -m "feat: initialize books microservice"
+git push origin 14th-assignment
+```
 
-1. Create tables for Book, Author, and Category.
-2. Define relationships between the tables.
-3. Normalize the schema up to 3NF.
-4. Write and execute SQL queries using VS Code SQLTools.
-5. Maintain GitHub-based backups using Git.
-6. Commit the database SQL scripts to GitHub.
+------------------------------------------------------------------------
 
-## 👨‍💻 Author
+# 📌 Development Roadmap
 
-Vaibhav-SF
+  Phase   Task                                    Status
+  ------- --------------------------------------- -----------------------
+  1       Understand microservices architecture   ✅ Completed
+  2       Create Books Service                    🚧 In Progress
+  3       Create Authors Service                  ⏳ Planned
+  4       Create Categories Service               ⏳ Planned
+  5       Database per service                    ⏳ Planned
+  6       REST service-to-service communication   ⏳ Planned
+  7       API Gateway                             ⏳ Planned
+  8       Message Queue                           ⏳ Planned
+  9       Centralized logging                     ⏳ Planned
+  10      Prometheus + Grafana monitoring         ⏳ Planned
+  11      OpenTelemetry + Jaeger tracing          ⏳ Planned
+  12      Dockerize services                      🚧 Partially prepared
+  13      AWS deployment                          ⏳ Planned
+  14      Final documentation and architecture    ⏳ Planned
 
-## 📌 Status
+------------------------------------------------------------------------
 
-Assignment 11 — Database Design and Normalization
+# 🎓 Learning Outcomes
 
-Completed:
-- PostgreSQL database setup
-- Authors table with identity primary key
-- Categories table with UNIQUE category_name
-- Books table with CHECK constraints and DECIMAL file_size
-- Identity primary keys on all tables
-- Foreign keys with ON DELETE RESTRICT
-- Indexes on foreign key columns
-- One-to-many relationships
-- 3NF normalization
-- Sample data
-- JOIN queries
-- INSERT / UPDATE / DELETE testing
-- SQLTools execution
-- SQL scripts for GitHub backup
+After completing this assignment, the project will demonstrate
+understanding of:
+
+-   Microservices architecture
+-   Domain decomposition
+-   Independent service deployment
+-   Independent scaling
+-   Failure isolation
+-   REST-based service communication
+-   API Gateway pattern
+-   Event-driven architecture
+-   Message queues
+-   Database-per-service architecture
+-   Centralized logging
+-   Metrics and monitoring
+-   Distributed tracing
+-   Docker containerization
+-   AWS deployment
+-   Service observability
+
+------------------------------------------------------------------------
+
+# ⚠️ Current Status
+
+The project is currently in the **microservices decomposition and
+service creation phase**.
+
+The **Books Service has been successfully generated and tested locally**
+using LoopBack 4. The generated `/ping` endpoint is responding
+successfully.
+
+The remaining architecture components will be implemented incrementally
+rather than installing all infrastructure at once.
+
+------------------------------------------------------------------------
+
+## 👨‍💻 Assignment
+
+**Assignment:** 14 --- Microservices Architecture and LoopBack 4
+
+**Project:** Book Management System --- Microservices
+
+**Framework:** LoopBack 4
+
+**Language:** TypeScript
+
+**Branch:** `14th-assignment`
