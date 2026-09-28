@@ -2,4 +2,3 @@ node_modules/
 .env
 *.log
 *.session.sql
-services/
