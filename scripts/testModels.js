@@ -1,4 +1,4 @@
-const {Book} = require('./index');
+const {Book} = require('../models/index');
 
 async function getBooks(){
     try{
@@ -10,6 +10,8 @@ async function getBooks(){
     } catch(error){
         console.error("Error in fetching books");
         console.error(error);
+    } finally{
+        await sequelize.close();
     }
 }
 getBooks();

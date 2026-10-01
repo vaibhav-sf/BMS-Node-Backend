@@ -1,5 +1,5 @@
 const sequelize = require("../config/database");
-const {Book} = require("./index");
+const {Book} = require("../models/index");
 
 async function testTransaction(){
     const transaction = await sequelize.transaction();
@@ -22,7 +22,7 @@ async function testTransaction(){
         );
         console.log("Book created inside transaction");
         console.log(newBook.toJSON());
-        // await transaction.commit();                // FOR COMMIT
+        await transaction.commit();                // FOR COMMIT
         // console.log("Transaction successful!");
         throw new Error("Something went wrong! Rolling back transaction");   // FOR ROLLBACK
 

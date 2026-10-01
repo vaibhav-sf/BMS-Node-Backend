@@ -6,7 +6,8 @@ const Book = sequelize.define(
     {
         book_id: {
             type: DataTypes.INTEGER,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         title: {
             type: DataTypes.STRING(200),
@@ -43,6 +44,10 @@ const Book = sequelize.define(
         category_id: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        description: {
+            type: DataTypes.TEXT,
+            allowNull: true
         },
         created_at: {
             type: DataTypes.DATE,

@@ -1,4 +1,4 @@
-const {Book, Author, Category} = require("./index");
+const {Book, Author, Category} = require("../models/index");
 
 async function getBooksDetails(){
     try{

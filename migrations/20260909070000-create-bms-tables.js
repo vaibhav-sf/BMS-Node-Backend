@@ -9,7 +9,8 @@ module.exports = {
             author_id: {
                 type: Sequelize.INTEGER,
                 primaryKey: true,
-                allowNull: false
+                allowNull: false,
+                autoIncrement: true
             },
             first_name: {
                 type: Sequelize.STRING(100),
@@ -39,7 +40,8 @@ module.exports = {
             category_id: {
                 type: Sequelize.INTEGER,
                 primaryKey: true,
-                allowNull: false
+                allowNull: false,
+                autoIncrement: true
             },
             category_name: {
                 type: Sequelize.STRING(100),
@@ -56,6 +58,7 @@ module.exports = {
             book_id: {
                 type: Sequelize.INTEGER,
                 primaryKey: true,
+                autoIncrement: true,
                 allowNull: false
             },
             title: {

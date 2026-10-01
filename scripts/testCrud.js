@@ -1,4 +1,4 @@
-const {Book} = require("./index");
+const {Book, sequelize} = require("../models/index");
 
 async function testCRUD(){
     try{
@@ -46,6 +46,8 @@ async function testCRUD(){
     } catch(error){
         console.error("Failed CRUD Operations");
         console.error(error);
+    } finally{
+        await sequelize.close();
     }
 }
 testCRUD();

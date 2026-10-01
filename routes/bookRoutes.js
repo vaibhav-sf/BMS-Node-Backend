@@ -1,7 +1,37 @@
 const express = require("express");
 const router = express.Router();
+const sequelize = require("../config/database");
 const {
      Book, Author, Category } = require("../models");
+
+// Turn a thrown error into an HTTP response.
+// Bad client input — failed model validation, duplicate values, or a foreign
+// key pointing at a row that doesn't exist — is the caller's fault, so it maps
+// to 400 with a readable message. Anything else is unexpected: log it and
+// return a plain 500 so we never leak raw DB text to the client.
+function sendWriteError(res, error, action) {
+    if (
+        error.name === "SequelizeValidationError" ||
+        error.name === "SequelizeUniqueConstraintError"
+    ) {
+        return res.status(400).json({
+            message: `Failed to ${action}: invalid data`,
+            errors: error.errors.map((e) => e.message)
+        });
+    }
+
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+        return res.status(400).json({
+            message: `Failed to ${action}: referenced author or category does not exist`
+        });
+    }
+
+    console.error(`Error trying to ${action}:`, error);
+
+    return res.status(500).json({
+        message: `Failed to ${action}`
+    });
+}
 
 // GET all books
 router.get("/", async (req, res) => {
@@ -34,6 +64,12 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
     try {
         const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
 
         const book = await Book.findByPk(id, {
             include: [
@@ -69,7 +105,6 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         const {
-            book_id,
             title,
             book_isbn,
             published_year,
@@ -77,11 +112,11 @@ router.post("/", async (req, res) => {
             page_count,
             file_size,
             author_id,
-            category_id
+            category_id,
+            description
         } = req.body;
 
         const newBook = await Book.create({
-            book_id,
             title,
             book_isbn,
             published_year,
@@ -89,17 +124,38 @@ router.post("/", async (req, res) => {
             page_count,
             file_size,
             author_id,
-            category_id
+            category_id,
+            description
         });
 
         res.status(201).json(newBook);
     } catch (error) {
-        console.error("Error creating book:", error);
+        sendWriteError(res, error, "create book");
+    }
+});
 
-        res.status(400).json({
-            message: "Failed to create book",
-            error: error.message
+
+// POST create an author and their book together in a single transaction.
+// If either insert fails, both are rolled back so we never end up with an
+// author that has no book (or a book pointing at a half-created author).
+router.post("/with-author", async (req, res) => {
+    try {
+        const result = await sequelize.transaction(async (t) => {
+            const { author, book } = req.body;
+
+            const newAuthor = await Author.create(author, { transaction: t });
+
+            const newBook = await Book.create(
+                { ...book, author_id: newAuthor.author_id },
+                { transaction: t }
+            );
+
+            return { author: newAuthor, book: newBook };
         });
+
+        res.status(201).json(result);
+    } catch (error) {
+        sendWriteError(res, error, "create author and book");
     }
 });
 
@@ -108,6 +164,12 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
     try {
         const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
 
         const book = await Book.findByPk(id);
 
@@ -141,12 +203,7 @@ router.put("/:id", async (req, res) => {
 
         res.json(book);
     } catch (error) {
-        console.error("Error updating book:", error);
-
-        res.status(400).json({
-            message: "Failed to update book",
-            error: error.message
-        });
+        sendWriteError(res, error, "update book");
     }
 });
 
@@ -155,6 +212,12 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
     try {
         const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
 
         const book = await Book.findByPk(id);
 
