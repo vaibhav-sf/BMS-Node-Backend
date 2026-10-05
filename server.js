@@ -27,6 +27,12 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`)
-});
+// Only start listening when run directly (e.g. `node server.js`), so tests can
+// import `app` and drive it with supertest without opening a real port.
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server is running on http://localhost:${port}`)
+    });
+}
+
+module.exports = app;

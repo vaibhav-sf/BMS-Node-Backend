@@ -1,92 +1,246 @@
 const express = require("express");
 const router = express.Router();
+const sequelize = require("../config/database");
+const {
+     Book, Author, Category } = require("../models");
 
-const books = [
-    {
-        id: 1,
-        title: "Ramayana",
-        author: "Valmiki",
-        year: 1500
-    },
-    {
-        id: 2,
-        title: "Mahabharata",
-        author: "Vyasa",
-        year: 1400
-    }
-];
-
-
-router.get("/", (req, res) => {
-    res.json(books)
-});
-
-router.get("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const book = books.find(book => book.id === id)
-    if(!book){
-        return res.status(404).json(
-            {
-                message: "Book not found"
-            }
-        )
-    }
-    res.json(book)
-});
-
-let nextId = 3;
-router.post("/", (req, res) => {
-    const {title, author, year} = req.body;
-    if (!title || !author || !year){
+// Turn a thrown error into an HTTP response.
+// Bad client input — failed model validation, duplicate values, or a foreign
+// key pointing at a row that doesn't exist — is the caller's fault, so it maps
+// to 400 with a readable message. Anything else is unexpected: log it and
+// return a plain 500 so we never leak raw DB text to the client.
+function sendWriteError(res, error, action) {
+    if (
+        error.name === "SequelizeValidationError" ||
+        error.name === "SequelizeUniqueConstraintError"
+    ) {
         return res.status(400).json({
-            message: "Missing required fields"
+            message: `Failed to ${action}: invalid data`,
+            errors: error.errors.map((e) => e.message)
         });
     }
-    if(typeof year !== "number"){
+
+    if (error.name === "SequelizeForeignKeyConstraintError") {
         return res.status(400).json({
-            message: "Year must be a number"
+            message: `Failed to ${action}: referenced author or category does not exist`
         });
     }
-    const newBook = {
-        id: nextId++,
-        title,
-        author,
-        year
-    };
-    books.push(newBook)
-    res.status(201).json(newBook)
-});
 
-router.put("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const book = books.find(book => book.id === id);
-    if(!book){
-        return res.status(404).json(
-            {
-                message: "Book not found"
-            }
-        )
-    }
-    const {title, author, year} = req.body;
-    if (title !== undefined) book.title = title;
-    if (author !== undefined) book.author = author;
-    if (year  !== undefined) book.year  = year;
-    res.json(book);
-});
+    console.error(`Error trying to ${action}:`, error);
 
-router.delete("/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const bookIndex = books.findIndex(book => book.id === id);
-    if(bookIndex === -1){
-        return res.status(404).json({
-            message: "Book not found"
-        })
-    }
-    const deleteBook = books.splice(bookIndex, 1);
-    res.json({
-        message: "Book deleted successfully",
-        book: deleteBook[0]
+    return res.status(500).json({
+        message: `Failed to ${action}`
     });
+}
+
+// GET all books
+router.get("/", async (req, res) => {
+    try {
+        const books = await Book.findAll({
+            include: [
+                {
+                    model: Author,
+                    attributes: ["author_id", "first_name", "last_name"]
+                },
+                {
+                    model: Category,
+                    attributes: ["category_id", "category_name"]
+                }
+            ]
+        });
+
+        res.json(books);
+    } catch (error) {
+        console.error("Error fetching books:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch books"
+        });
+    }
 });
+
+
+// GET book by ID
+router.get("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
+
+        const book = await Book.findByPk(id, {
+            include: [
+                {
+                    model: Author,
+                    attributes: ["author_id", "first_name", "last_name"]
+                },
+                {
+                    model: Category,
+                    attributes: ["category_id", "category_name"]
+                }
+            ]
+        });
+
+        if (!book) {
+            return res.status(404).json({
+                message: "Book not found"
+            });
+        }
+
+        res.json(book);
+    } catch (error) {
+        console.error("Error fetching book:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch book"
+        });
+    }
+});
+
+
+// POST create a new book
+router.post("/", async (req, res) => {
+    try {
+        const {
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id,
+            description
+        } = req.body;
+
+        const newBook = await Book.create({
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id,
+            description
+        });
+
+        res.status(201).json(newBook);
+    } catch (error) {
+        sendWriteError(res, error, "create book");
+    }
+});
+
+
+// POST create an author and their book together in a single transaction.
+// If either insert fails, both are rolled back so we never end up with an
+// author that has no book (or a book pointing at a half-created author).
+router.post("/with-author", async (req, res) => {
+    try {
+        const result = await sequelize.transaction(async (t) => {
+            const { author, book } = req.body;
+
+            const newAuthor = await Author.create(author, { transaction: t });
+
+            const newBook = await Book.create(
+                { ...book, author_id: newAuthor.author_id },
+                { transaction: t }
+            );
+
+            return { author: newAuthor, book: newBook };
+        });
+
+        res.status(201).json(result);
+    } catch (error) {
+        sendWriteError(res, error, "create author and book");
+    }
+});
+
+
+// PUT update a book
+router.put("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
+
+        const book = await Book.findByPk(id);
+
+        if (!book) {
+            return res.status(404).json({
+                message: "Book not found"
+            });
+        }
+
+        const {
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        } = req.body;
+
+        await book.update({
+            title,
+            book_isbn,
+            published_year,
+            book_type,
+            page_count,
+            file_size,
+            author_id,
+            category_id
+        });
+
+        res.json(book);
+    } catch (error) {
+        sendWriteError(res, error, "update book");
+    }
+});
+
+
+// DELETE a book
+router.delete("/:id", async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "Invalid book id"
+            });
+        }
+
+        const book = await Book.findByPk(id);
+
+        if (!book) {
+            return res.status(404).json({
+                message: "Book not found"
+            });
+        }
+
+        await book.destroy();
+
+        res.json({
+            message: "Book deleted successfully",
+            book
+        });
+    } catch (error) {
+        console.error("Error deleting book:", error);
+
+        res.status(500).json({
+            message: "Failed to delete book"
+        });
+    }
+});
+
 
 module.exports = router;
