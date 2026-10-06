@@ -1,4 +1,9 @@
-import {inject} from '@loopback/core';
+import {inject, service} from '@loopback/core';
+import {AuthorsApiService} from '../services/authors-api.service';
+import {CategoriesApiService} from '../services/categories-api.service';
+import {MessageQueueService} from '../services/message-queue.service';
+import {logger} from '../services/logger.service';
+import {booksCreatedTotal} from '../services/metrics.service';
 import {
   Count,
   CountSchema,
@@ -56,6 +61,12 @@ export class BookController {
     public bookRepository: BookRepository,
     @inject(RestBindings.Http.RESPONSE)
     private httpResponse: Response,
+    @service(AuthorsApiService)
+    private authorsApiService: AuthorsApiService,
+    @service(CategoriesApiService)
+    private categoriesApiService: CategoriesApiService,
+    @service(MessageQueueService)
+    private messageQueueService: MessageQueueService,
   ) {}
 
   /**
@@ -84,11 +95,35 @@ export class BookController {
     book: Omit<Book, 'book_id'>,
   ): Promise<Book> {
     try {
+      // Validate the author through Authors Service
+      await this.authorsApiService.getAuthorById(book.author_id);
+
+      // Validate the category through Categories Service
+      await this.categoriesApiService.getCategoryById(book.category_id);
+
+      // Only then create the book
       const created = await this.bookRepository.create(book);
+      booksCreatedTotal.inc();
+
+      logger.info('Book created', {
+        bookId: created.book_id,
+        title: created.title,
+        isbn: created.book_isbn,
+      });
+
+      await this.messageQueueService.publishEvent('book.created', created);
+
+      logger.info('book.created event published', {
+        bookId: created.book_id,
+      });
+
       // Force the actual HTTP status to 201, not only the OpenAPI metadata.
       this.httpResponse.status(201);
       return created;
     } catch (err) {
+      logger.error('Failed to create book', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       rethrowDbError(err);
     }
   }
