@@ -1,6 +1,7 @@
 import {service} from '@loopback/core';
 import {get, param, post, patch, del, requestBody} from '@loopback/rest';
 import {BooksApiService} from '../services/books-api.service';
+import {logger} from '../services/logger.service';
 
 export class BooksController {
   constructor(
@@ -20,7 +21,9 @@ export class BooksController {
   async createBook(
     @requestBody() book: Record<string, unknown>,
   ): Promise<unknown> {
-    return this.booksApiService.createBook(book);
+    const createdBook = await this.booksApiService.createBook(book);
+    logger.info('Book creation request completed');
+    return createdBook;
   }
   @patch('/api/books/{id}')
   async updateBook(

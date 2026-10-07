@@ -23,6 +23,7 @@ import {
 import {Category} from '../models';
 import {CategoryRepository} from '../repositories';
 import {inject} from '@loopback/core';
+import {logger} from '../services/logger.service';
 
 function validateCategoryName(categoryName: string): string {
   const trimmedName = categoryName.trim();
@@ -71,6 +72,7 @@ export class CategoryController {
     const savedCategory = await this.categoryRepository.findById(
       created.category_id!,
     );
+    logger.info('Category created', {categoryId: savedCategory.category_id});
     this.httpResponse.status(201);
     return savedCategory;
   }
