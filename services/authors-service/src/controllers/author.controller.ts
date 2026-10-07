@@ -1,3 +1,4 @@
+import {logger} from '../services/logger.service';
 import {Filter, FilterExcludingWhere, repository} from '@loopback/repository';
 import {
   post,
@@ -42,8 +43,17 @@ export class AuthorController {
     author: Omit<Author, 'author_id'>,
   ): Promise<Author> {
     try {
-      return await this.authorRepository.create(author);
+      const createdAuthor = await this.authorRepository.create(author);
+
+      logger.info('Author created', {
+        authorId: createdAuthor.author_id,
+      });
+
+      return createdAuthor;
     } catch (err) {
+      logger.error('Failed to create author', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       // Surface a duplicate email (unique index violation) as 409 Conflict
       // instead of a generic 500.
       if (err.code === PG_UNIQUE_VIOLATION) {
@@ -66,7 +76,13 @@ export class AuthorController {
     },
   })
   async find(@param.filter(Author) filter?: Filter<Author>): Promise<Author[]> {
-    return this.authorRepository.find(filter);
+    const authors = await this.authorRepository.find(filter);
+
+    logger.info('Authors fetched', {
+      count: authors.length,
+    });
+
+    return authors;
   }
 
   @get('/authors/{id}')
@@ -83,7 +99,13 @@ export class AuthorController {
     @param.filter(Author, {exclude: 'where'})
     filter?: FilterExcludingWhere<Author>,
   ): Promise<Author> {
-    return this.authorRepository.findById(id, filter);
+    const author = await this.authorRepository.findById(id, filter);
+
+    logger.info('Author fetched', {
+      authorId: id,
+    });
+
+    return author;
   }
   @patch('/authors/{id}')
   @response(204, {
@@ -101,6 +123,9 @@ export class AuthorController {
     author: Author,
   ): Promise<void> {
     await this.authorRepository.updateById(id, author);
+    logger.info('Author updated', {
+      authorId: id,
+    });
   }
 
   @put('/authors/{id}')
@@ -112,6 +137,9 @@ export class AuthorController {
     @requestBody() author: Author,
   ): Promise<void> {
     await this.authorRepository.replaceById(id, author);
+    logger.info('Author replaced', {
+      authorId: id,
+    });
   }
 
   @del('/authors/{id}')
@@ -120,5 +148,8 @@ export class AuthorController {
   })
   async deleteById(@param.path.number('id') id: number): Promise<void> {
     await this.authorRepository.deleteById(id);
+    logger.info('Author deleted', {
+      authorId: id,
+    });
   }
 }

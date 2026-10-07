@@ -9,11 +9,9 @@ if (process.env.OPENSEARCH_URL) {
     node: process.env.OPENSEARCH_URL,
     index: process.env.OPENSEARCH_INDEX ?? 'bms-logs',
   });
-
   openSearchTransport.on('error', error => {
     console.error('OpenSearch logging error', error);
   });
-
   transports.push(openSearchTransport);
 }
 
