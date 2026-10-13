@@ -9,6 +9,8 @@ import {AuthorsApiService} from '../../services/authors-api.service';
 import {FakeAuthorsApiService} from './fake-authors-api.service';
 import {CategoriesApiService} from '../../services/categories-api.service';
 import {FakeCategoriesApiService} from './fake-categories-api.service';
+import {MessageQueueService} from '../../services/message-queue.service';
+import {FakeMessageQueueService} from './fake-message-queue.service';
 
 export async function setupApplication(): Promise<AppWithClient> {
   const restConfig = givenHttpServerConfig({
@@ -32,6 +34,13 @@ export async function setupApplication(): Promise<AppWithClient> {
     .toClass(FakeAuthorsApiService)
     .tag({
       [CoreTags.SERVICE_INTERFACE]: AuthorsApiService,
+    });
+
+  app
+    .bind('services.MessageQueueService')
+    .toClass(FakeMessageQueueService)
+    .tag({
+      [CoreTags.SERVICE_INTERFACE]: MessageQueueService,
     });
 
   app

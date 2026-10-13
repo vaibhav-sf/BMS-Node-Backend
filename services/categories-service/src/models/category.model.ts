@@ -18,6 +18,7 @@ export class Category extends Entity {
 
   @property({
     type: 'date',
+    defaultFn: 'now',
   })
   created_at: Date;
 

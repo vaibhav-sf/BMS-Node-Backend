@@ -28,17 +28,18 @@ services:
     container_name: bms-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-bms}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - bms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-postgres} -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -81,14 +82,18 @@ services:
     build: ./services/books-service
     container_name: bms-books-service
     restart: unless-stopped
-    env_file:
-      - ./services/books-service/.env
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r ./dist/instrumentation.js -r source-map-support/register .
     environment:
       PORT: 3001
       HOST: 0.0.0.0
       DB_HOST: bms-postgres
       DB_PORT: 5432
       DB_NAME: books_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
       SERVICE_NAME: books-service
       AUTHORS_SERVICE_URL: http://bms-authors-service:3002
       CATEGORIES_SERVICE_URL: http://bms-categories-service:3003
@@ -113,15 +118,20 @@ services:
     build: ./services/authors-service
     container_name: bms-authors-service
     restart: unless-stopped
-    env_file:
-      - ./services/authors-service/.env
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r source-map-support/register .
     environment:
       PORT: 3002
       HOST: 0.0.0.0
       DB_HOST: bms-postgres
       DB_PORT: 5432
       DB_NAME: authors_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
       SERVICE_NAME: authors-service
+      BOOKS_SERVICE_URL: http://bms-books-service:3001
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
     ports:
@@ -139,15 +149,20 @@ services:
     build: ./services/categories-service
     container_name: bms-categories-service
     restart: unless-stopped
-    env_file:
-      - ./services/categories-service/.env
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r source-map-support/register .
     environment:
       PORT: 3003
       HOST: 0.0.0.0
       DB_HOST: bms-postgres
       DB_PORT: 5432
       DB_NAME: categories_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
       SERVICE_NAME: categories-service
+      BOOKS_SERVICE_URL: http://bms-books-service:3001
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
     ports:
@@ -165,8 +180,6 @@ services:
     build: ./services/book-events-consumer
     container_name: bms-book-events-consumer
     restart: unless-stopped
-    env_file:
-      - ./services/book-events-consumer/.env
     environment:
       PORT: 3004
       HOST: 0.0.0.0
@@ -248,28 +261,20 @@ services:
 
 networks:
   bms-network:
-    external: true
-    name: bms-network
+    driver: bridge
 
 volumes:
   postgres_data:
-    external: true
     name: bms-node_bms_postgres_data
 
   grafana_data:
-    external: true
     name: bms-grafana-data
 
   prometheus_data:
-    external: true
-    name: dac42c4b035179bb79e64eb1e844485f28b3fba7765e5f9c370c80316dad8f08
 
   rabbitmq_data:
-    external: true
-    name: 864416fe43a6df629612287d06864b5d7a1425e80f43ee7f9641cac10d4ee51e
 
   jaeger_data:
-    external: true
-    name: 462a0579686aea028b4d716e5124387652d2279257225bf8947d45d398ffc40f
 
   bms-opensearch-data:
+    name: bms-node_bms-opensearch-data

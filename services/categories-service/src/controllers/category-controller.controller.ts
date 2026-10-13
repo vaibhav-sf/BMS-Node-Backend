@@ -22,8 +22,9 @@ import {
 } from '@loopback/rest';
 import {Category} from '../models';
 import {CategoryRepository} from '../repositories';
-import {inject} from '@loopback/core';
+import {inject, service} from '@loopback/core';
 import {logger} from '../services/logger.service';
+import {BooksReferenceService} from '../services/books-reference.service';
 
 function validateCategoryName(categoryName: string): string {
   const trimmedName = categoryName.trim();
@@ -42,6 +43,8 @@ export class CategoryController {
     public categoryRepository: CategoryRepository,
     @inject(RestBindings.Http.RESPONSE)
     private httpResponse: Response,
+    @service(BooksReferenceService)
+    private readonly booksReferenceService: BooksReferenceService,
   ) {}
 
   @post('/categories')
@@ -228,6 +231,11 @@ export class CategoryController {
     description: 'Category DELETE success',
   })
   async deleteById(@param.path.number('id') id: number): Promise<void> {
+    if (await this.booksReferenceService.hasBooksForCategory(id)) {
+      throw new HttpErrors.Conflict(
+        'Category cannot be deleted while books reference it',
+      );
+    }
     await this.categoryRepository.deleteById(id);
   }
 }

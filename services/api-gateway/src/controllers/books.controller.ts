@@ -1,5 +1,15 @@
 import {service} from '@loopback/core';
-import {get, param, post, patch, del, requestBody} from '@loopback/rest';
+import {
+  get,
+  param,
+  post,
+  patch,
+  del,
+  requestBody,
+  Response,
+  RestBindings,
+} from '@loopback/rest';
+import {inject} from '@loopback/core';
 import {BooksApiService} from '../services/books-api.service';
 import {logger} from '../services/logger.service';
 
@@ -7,6 +17,8 @@ export class BooksController {
   constructor(
     @service(BooksApiService)
     private readonly booksApiService: BooksApiService,
+    @inject(RestBindings.Http.RESPONSE)
+    private readonly response: Response,
   ) {}
 
   @get('/api/books')
@@ -23,6 +35,7 @@ export class BooksController {
   ): Promise<unknown> {
     const createdBook = await this.booksApiService.createBook(book);
     logger.info('Book creation request completed');
+    this.response.status(201);
     return createdBook;
   }
   @patch('/api/books/{id}')

@@ -1,3 +1,4 @@
+import {service} from '@loopback/core';
 import {logger} from '../services/logger.service';
 import {Filter, FilterExcludingWhere, repository} from '@loopback/repository';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@loopback/rest';
 import {Author} from '../models';
 import {AuthorRepository} from '../repositories';
+import {BooksReferenceService} from '../services/books-reference.service';
 
 // PostgreSQL SQLSTATE for a unique-constraint violation.
 const PG_UNIQUE_VIOLATION = '23505';
@@ -22,6 +24,8 @@ export class AuthorController {
   constructor(
     @repository(AuthorRepository)
     public authorRepository: AuthorRepository,
+    @service(BooksReferenceService)
+    private readonly booksReferenceService: BooksReferenceService,
   ) {}
 
   @post('/authors')
@@ -147,6 +151,11 @@ export class AuthorController {
     description: 'Author DELETE success',
   })
   async deleteById(@param.path.number('id') id: number): Promise<void> {
+    if (await this.booksReferenceService.hasBooksForAuthor(id)) {
+      throw new HttpErrors.Conflict(
+        'Author cannot be deleted while books reference it',
+      );
+    }
     await this.authorRepository.deleteById(id);
     logger.info('Author deleted', {
       authorId: id,

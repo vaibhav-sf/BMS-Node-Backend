@@ -11,6 +11,7 @@ export interface RemoteAuthor {
 
 @injectable({scope: BindingScope.SINGLETON})
 export class AuthorsApiService {
+  private readonly requestTimeoutMs = 5000;
   private readonly baseUrl =
     process.env.AUTHORS_SERVICE_URL ?? 'http://127.0.0.1:3002';
 
@@ -18,8 +19,15 @@ export class AuthorsApiService {
     let response: globalThis.Response;
 
     try {
-      response = await fetch(`${this.baseUrl}/authors/${authorId}`);
-    } catch {
+      response = await fetch(`${this.baseUrl}/authors/${authorId}`, {
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new HttpErrors.GatewayTimeout(
+          'Authors Service request timed out',
+        );
+      }
       throw new HttpErrors.BadGateway('Authors Service is unavailable');
     }
 

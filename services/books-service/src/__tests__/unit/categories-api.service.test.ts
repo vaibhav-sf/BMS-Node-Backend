@@ -54,4 +54,26 @@ describe('CategoriesApiService', () => {
     expect(error.statusCode).to.equal(502);
     expect(error.message).to.equal('Categories Service is unavailable');
   });
+
+  it('uses an abort signal and maps a timed out request to 504', async () => {
+    const configurable = service as unknown as {requestTimeoutMs: number};
+    configurable.requestTimeoutMs = 10;
+    global.fetch = async (_url, options) =>
+      new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener(
+          'abort',
+          () => reject(options.signal?.reason),
+          {once: true},
+        );
+      });
+
+    try {
+      const startedAt = Date.now();
+      const error = await expect(service.getCategoryById(1)).to.be.rejected();
+      expect(error.statusCode).to.equal(504);
+      expect(Date.now() - startedAt).to.be.lessThan(1000);
+    } finally {
+      configurable.requestTimeoutMs = 5000;
+    }
+  });
 });

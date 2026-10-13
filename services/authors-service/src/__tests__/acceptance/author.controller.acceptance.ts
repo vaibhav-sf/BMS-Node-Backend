@@ -2,6 +2,7 @@ import {Client, expect} from '@loopback/testlab';
 import {AuthorsServiceApplication} from '../..';
 import {AuthorRepository} from '../../repositories';
 import {setupApplication} from './test-helper';
+import {FakeBooksReferenceService} from './fake-books-reference.service';
 
 describe('AuthorController (acceptance)', () => {
   let app: AuthorsServiceApplication;
@@ -113,5 +114,37 @@ describe('AuthorController (acceptance)', () => {
     const id = res.body.author_id;
     await client.del(`/authors/${id}`).expect(204);
     await client.get(`/authors/${id}`).expect(404);
+  });
+
+  it('blocks deletion when Books reports a reference', async () => {
+    const created = await client
+      .post('/authors')
+      .send({name: 'Referenced author', email: `ref.${suffix}@example.com`})
+      .expect(200);
+    const id = created.body.author_id;
+    FakeBooksReferenceService.hasReferences = true;
+    try {
+      await client.del(`/authors/${id}`).expect(409);
+      await client.get(`/authors/${id}`).expect(200);
+    } finally {
+      FakeBooksReferenceService.hasReferences = false;
+      await client.del(`/authors/${id}`).expect(204);
+    }
+  });
+
+  it('fails closed if the Books reference check is unavailable', async () => {
+    const created = await client
+      .post('/authors')
+      .send({name: 'Check author', email: `check.${suffix}@example.com`})
+      .expect(200);
+    const id = created.body.author_id;
+    FakeBooksReferenceService.unavailable = true;
+    try {
+      await client.del(`/authors/${id}`).expect(500);
+      await client.get(`/authors/${id}`).expect(200);
+    } finally {
+      FakeBooksReferenceService.unavailable = false;
+      await client.del(`/authors/${id}`).expect(204);
+    }
   });
 });

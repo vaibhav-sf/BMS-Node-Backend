@@ -9,6 +9,7 @@ export interface RemoteCategory {
 
 @injectable({scope: BindingScope.SINGLETON})
 export class CategoriesApiService {
+  private readonly requestTimeoutMs = 5000;
   private readonly baseUrl =
     process.env.CATEGORIES_SERVICE_URL ?? 'http://127.0.0.1:3003';
 
@@ -16,8 +17,15 @@ export class CategoriesApiService {
     let response: globalThis.Response;
 
     try {
-      response = await fetch(`${this.baseUrl}/categories/${categoryId}`);
-    } catch {
+      response = await fetch(`${this.baseUrl}/categories/${categoryId}`, {
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new HttpErrors.GatewayTimeout(
+          'Categories Service request timed out',
+        );
+      }
       throw new HttpErrors.BadGateway('Categories Service is unavailable');
     }
 

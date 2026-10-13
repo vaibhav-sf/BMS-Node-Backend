@@ -4,6 +4,9 @@ import {
   givenHttpServerConfig,
   Client,
 } from '@loopback/testlab';
+import {CoreTags} from '@loopback/core';
+import {BooksReferenceService} from '../../services/books-reference.service';
+import {FakeBooksReferenceService} from './fake-books-reference.service';
 
 export async function setupApplication(): Promise<AppWithClient> {
   const restConfig = givenHttpServerConfig({
@@ -19,6 +22,10 @@ export async function setupApplication(): Promise<AppWithClient> {
   });
 
   await app.boot();
+  app
+    .bind('services.BooksReferenceService')
+    .toClass(FakeBooksReferenceService)
+    .tag({[CoreTags.SERVICE_INTERFACE]: BooksReferenceService});
   await app.start();
 
   const client = createRestAppClient(app);

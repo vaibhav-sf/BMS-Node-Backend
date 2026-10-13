@@ -17,30 +17,53 @@ export class BooksApiService {
     });
   }
 
+  private throwUpstreamError(status: number): never {
+    const error = new Error('Books Service returned an error') as Error & {
+      statusCode: number;
+    };
+    error.statusCode = status;
+    throw error;
+  }
+
+  private rethrowRequestError(error: unknown): never {
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new HttpErrors.GatewayTimeout('Books Service request timed out');
+    }
+    throw new HttpErrors.BadGateway('Books Service is unavailable');
+  }
+
+  private async readJson(response: globalThis.Response): Promise<unknown> {
+    try {
+      return await response.json();
+    } catch {
+      throw new HttpErrors.BadGateway(
+        'Books Service returned an invalid response',
+      );
+    }
+  }
+
   async getBooks(): Promise<unknown> {
     let response: globalThis.Response;
 
     try {
       response = await this.fetchWithTimeout(`${this.baseUrl}/books`);
-    } catch {
-      throw new HttpErrors.BadGateway('Books Service is unavailable');
+    } catch (error) {
+      this.rethrowRequestError(error);
     }
 
     if (!response.ok) {
-      throw new HttpErrors.BadGateway(
-        'Books Service returned an unexpected response',
-      );
+      this.throwUpstreamError(response.status);
     }
 
-    return response.json();
+    return this.readJson(response);
   }
   async getBookById(bookId: number): Promise<unknown> {
     let response: globalThis.Response;
 
     try {
       response = await this.fetchWithTimeout(`${this.baseUrl}/books/${bookId}`);
-    } catch {
-      throw new HttpErrors.BadGateway('Books Service is unavailable');
+    } catch (error) {
+      this.rethrowRequestError(error);
     }
 
     if (response.status === 404) {
@@ -48,12 +71,10 @@ export class BooksApiService {
     }
 
     if (!response.ok) {
-      throw new HttpErrors.BadGateway(
-        'Books Service returned an unexpected response',
-      );
+      this.throwUpstreamError(response.status);
     }
 
-    return response.json();
+    return this.readJson(response);
   }
   async createBook(book: Record<string, unknown>): Promise<unknown> {
     let response: globalThis.Response;
@@ -66,45 +87,31 @@ export class BooksApiService {
         },
         body: JSON.stringify(book),
       });
-    } catch {
-      throw new HttpErrors.BadGateway('Books Service is unavailable');
+    } catch (error) {
+      this.rethrowRequestError(error);
     }
 
     if (!response.ok) {
-      let message = 'Books Service returned an unexpected response';
-
-      try {
-        const errorBody = (await response.json()) as {
-          error?: {message?: string; details?: unknown};
-        };
-
-        message = errorBody.error?.message ?? message;
-
-        // Keep LoopBack's field-level validation errors when proxying the
-        // response. Without these, clients only see the generic 422 message.
-        if (errorBody.error?.details !== undefined) {
-          message = `${message} ${JSON.stringify(errorBody.error.details)}`;
-        }
-      } catch {
-        throw new HttpErrors.BadGateway('Books Service is unavailable');
+      if (response.status === 400) {
+        throw new HttpErrors.BadRequest('Books Service rejected the request');
       }
 
       if (response.status === 409) {
-        throw new HttpErrors.Conflict(message);
+        throw new HttpErrors.Conflict('Book conflicts with existing data');
       }
 
-      if (response.status === 422) {
-        throw new HttpErrors.UnprocessableEntity(message);
+      if (response.status >= 400 && response.status <= 599) {
+        if (response.status === 422) {
+          throw new HttpErrors.UnprocessableEntity('Book data is invalid');
+        }
+        this.throwUpstreamError(response.status);
       }
-
-      if (response.status === 400) {
-        throw new HttpErrors.BadRequest(message);
-      }
-
-      throw new HttpErrors.BadGateway(message);
+      throw new HttpErrors.BadGateway(
+        'Books Service returned an invalid response',
+      );
     }
 
-    return response.json();
+    return this.readJson(response);
   }
   async updateBook(
     bookId: number,
@@ -123,56 +130,22 @@ export class BooksApiService {
           body: JSON.stringify(updates),
         },
       );
-    } catch {
-      throw new HttpErrors.BadGateway('Books Service is unavailable');
+    } catch (error) {
+      this.rethrowRequestError(error);
     }
 
     if (response.status === 404) {
       throw new HttpErrors.NotFound(`Book ${bookId} not found`);
     }
 
-    if (response.status === 409) {
-      let message = 'Book update conflicts with existing data';
-
-      try {
-        const errorBody = (await response.json()) as {
-          error?: {message?: string};
-        };
-
-        message = errorBody.error?.message ?? message;
-      } catch {
-        // Keep default message.
-      }
-
-      throw new HttpErrors.Conflict(message);
-    }
-
-    if (response.status === 422) {
-      let message = 'Invalid book data';
-
-      try {
-        const errorBody = (await response.json()) as {
-          error?: {message?: string};
-        };
-
-        message = errorBody.error?.message ?? message;
-      } catch {
-        // Keep default message.
-      }
-
-      throw new HttpErrors.UnprocessableEntity(message);
-    }
-
     if (!response.ok) {
-      throw new HttpErrors.BadGateway(
-        'Books Service returned an unexpected response',
-      );
+      this.throwUpstreamError(response.status);
     }
     if (response.status === 204) {
       return this.getBookById(bookId);
     }
 
-    return response.json();
+    return this.readJson(response);
   }
   async deleteBook(bookId: number): Promise<void> {
     let response: globalThis.Response;
@@ -184,8 +157,8 @@ export class BooksApiService {
           method: 'DELETE',
         },
       );
-    } catch {
-      throw new HttpErrors.BadGateway('Books Service is unavailable');
+    } catch (error) {
+      this.rethrowRequestError(error);
     }
 
     if (response.status === 404) {
@@ -193,9 +166,7 @@ export class BooksApiService {
     }
 
     if (!response.ok) {
-      throw new HttpErrors.BadGateway(
-        'Books Service returned an unexpected response',
-      );
+      this.throwUpstreamError(response.status);
     }
   }
 }

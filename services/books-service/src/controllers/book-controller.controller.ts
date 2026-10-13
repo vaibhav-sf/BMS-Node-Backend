@@ -3,7 +3,10 @@ import {AuthorsApiService} from '../services/authors-api.service';
 import {CategoriesApiService} from '../services/categories-api.service';
 import {MessageQueueService} from '../services/message-queue.service';
 import {logger} from '../services/logger.service';
-import {booksCreatedTotal} from '../services/metrics.service';
+import {
+  bookEventsPublishFailuresTotal,
+  booksCreatedTotal,
+} from '../services/metrics.service';
 import {
   Count,
   CountSchema,
@@ -111,11 +114,23 @@ export class BookController {
         isbn: created.book_isbn,
       });
 
-      await this.messageQueueService.publishEvent('book.created', created);
-
-      logger.info('book.created event published', {
-        bookId: created.book_id,
-      });
+      try {
+        await this.messageQueueService.publishEvent('book.created', created);
+        logger.info('book.created event published', {
+          bookId: created.book_id,
+        });
+      } catch (publishError) {
+        // This best-effort publish keeps the response consistent with the
+        // persisted book; a transactional outbox would be needed for delivery guarantees.
+        bookEventsPublishFailuresTotal.inc();
+        logger.error('Book created but event publishing failed', {
+          bookId: created.book_id,
+          error:
+            publishError instanceof Error
+              ? publishError.message
+              : String(publishError),
+        });
+      }
 
       // Force the actual HTTP status to 201, not only the OpenAPI metadata.
       this.httpResponse.status(201);
@@ -189,6 +204,12 @@ export class BookController {
     @param.where(Book) where?: Where<Book>,
   ): Promise<Count> {
     try {
+      if (!where || Object.keys(where).length === 0) {
+        throw new HttpErrors.BadRequest(
+          'A where filter is required for bulk book updates',
+        );
+      }
+      await this.validateReferences(book);
       return await this.bookRepository.updateAll(book, where);
     } catch (err) {
       rethrowDbError(err);
@@ -236,6 +257,7 @@ export class BookController {
     book: Book,
   ): Promise<void> {
     try {
+      await this.validateReferences(book);
       await this.bookRepository.updateById(id, book);
     } catch (err) {
       rethrowDbError(err);
@@ -261,6 +283,7 @@ export class BookController {
     book: Book,
   ): Promise<void> {
     try {
+      await this.validateReferences(book);
       await this.bookRepository.replaceById(id, book);
     } catch (err) {
       rethrowDbError(err);
@@ -276,5 +299,14 @@ export class BookController {
   })
   async deleteById(@param.path.number('id') id: number): Promise<void> {
     await this.bookRepository.deleteById(id);
+  }
+
+  private async validateReferences(book: Partial<Book>): Promise<void> {
+    if (book.author_id !== undefined) {
+      await this.authorsApiService.getAuthorById(book.author_id);
+    }
+    if (book.category_id !== undefined) {
+      await this.categoriesApiService.getCategoryById(book.category_id);
+    }
   }
 }

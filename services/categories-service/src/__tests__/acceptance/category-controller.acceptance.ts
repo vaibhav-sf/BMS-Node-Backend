@@ -1,6 +1,7 @@
 import {Client, expect} from '@loopback/testlab';
 import {CategoriesServiceApplication} from '../..';
 import {setupApplication} from './test-helper';
+import {FakeBooksReferenceService} from './fake-books-reference.service';
 
 describe('CategoryController', () => {
   let app: CategoriesServiceApplication;
@@ -33,7 +34,8 @@ describe('CategoryController', () => {
       });
 
       expect(res.body.category_id).to.not.equal(undefined);
-      expect(res.body.created_at).to.not.equal(undefined);
+      expect(res.body.created_at).to.be.a.String();
+      expect(Number.isNaN(Date.parse(res.body.created_at))).to.equal(false);
     } finally {
       if (categoryId !== undefined) {
         await client.delete(`/categories/${categoryId}`).expect(204);
@@ -471,5 +473,37 @@ describe('CategoryController', () => {
   });
   it('returns 404 when deleting a nonexistent category', async () => {
     await client.delete('/categories/999999999').expect(404);
+  });
+
+  it('blocks deletion when Books reports a reference', async () => {
+    const created = await client
+      .post('/categories')
+      .send({category_name: `Referenced ${Date.now()}`})
+      .expect(201);
+    const id = created.body.category_id;
+    FakeBooksReferenceService.hasReferences = true;
+    try {
+      await client.delete(`/categories/${id}`).expect(409);
+      await client.get(`/categories/${id}`).expect(200);
+    } finally {
+      FakeBooksReferenceService.hasReferences = false;
+      await client.delete(`/categories/${id}`).expect(204);
+    }
+  });
+
+  it('fails closed if the Books reference check is unavailable', async () => {
+    const created = await client
+      .post('/categories')
+      .send({category_name: `Unavailable check ${Date.now()}`})
+      .expect(201);
+    const id = created.body.category_id;
+    FakeBooksReferenceService.unavailable = true;
+    try {
+      await client.delete(`/categories/${id}`).expect(500);
+      await client.get(`/categories/${id}`).expect(200);
+    } finally {
+      FakeBooksReferenceService.unavailable = false;
+      await client.delete(`/categories/${id}`).expect(204);
+    }
   });
 });

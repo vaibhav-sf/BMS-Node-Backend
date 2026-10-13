@@ -17,3 +17,9 @@ export const bookEventsPublishedTotal = new Counter({
   help: 'Total number of book events published to RabbitMQ',
   registers: [metricsRegistry],
 });
+
+export const bookEventsPublishFailuresTotal = new Counter({
+  name: 'book_events_publish_failures_total',
+  help: 'Total number of book events that failed to publish after creation',
+  registers: [metricsRegistry],
+});

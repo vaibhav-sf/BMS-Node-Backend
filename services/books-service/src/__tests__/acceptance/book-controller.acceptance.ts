@@ -2,6 +2,8 @@ import {Client, expect} from '@loopback/testlab';
 import {BooksServiceApplication} from '../..';
 import {BookRepository} from '../../repositories';
 import {setupApplication} from './test-helper';
+import {FakeMessageQueueService} from './fake-message-queue.service';
+import {bookEventsPublishFailuresTotal} from '../../services/metrics.service';
 
 describe('BookController (acceptance)', () => {
   let app: BooksServiceApplication;
@@ -66,6 +68,27 @@ describe('BookController (acceptance)', () => {
     expect(res.body.book_id).to.be.a.Number();
     expect(res.body.title).to.equal('Acceptance Test Book');
     createdIds.push(res.body.book_id);
+  });
+
+  it('returns 201 and keeps the book when event publishing fails', async () => {
+    const before =
+      (await bookEventsPublishFailuresTotal.get()).values[0]?.value ?? 0;
+    FakeMessageQueueService.failPublishing = true;
+    try {
+      const response = await client
+        .post('/books')
+        .send(givenBook())
+        .expect(201);
+      createdIds.push(response.body.book_id);
+
+      const saved = await bookRepository.findById(response.body.book_id);
+      expect(saved.title).to.equal('Acceptance Test Book');
+      const after =
+        (await bookEventsPublishFailuresTotal.get()).values[0]?.value ?? 0;
+      expect(after).to.equal(before + 1);
+    } finally {
+      FakeMessageQueueService.failPublishing = false;
+    }
   });
 
   it('2. rejects a book with a missing required field (title)', async () => {
@@ -169,5 +192,74 @@ describe('BookController (acceptance)', () => {
     // DELETE -> 204, then the row is gone -> 404
     await client.del(`/books/${id}`).expect(204);
     await client.get(`/books/${id}`).expect(404);
+  });
+
+  it('rejects invalid author/category references on all update paths', async () => {
+    const created = await client.post('/books').send(givenBook()).expect(201);
+    const id = created.body.book_id;
+    createdIds.push(id);
+
+    await client.patch(`/books/${id}`).send({author_id: 999999}).expect(422);
+    await client.patch(`/books/${id}`).send({category_id: 999999}).expect(422);
+    await client
+      .put(`/books/${id}`)
+      .send(givenBook({author_id: 999999}))
+      .expect(422);
+    await client
+      .put(`/books/${id}`)
+      .send(givenBook({category_id: 999999}))
+      .expect(422);
+    await client
+      .patch('/books')
+      .query({where: JSON.stringify({book_id: id})})
+      .send({author_id: 999999})
+      .expect(422);
+    await client
+      .patch('/books')
+      .query({where: JSON.stringify({book_id: id})})
+      .send({category_id: 999999})
+      .expect(422);
+
+    const unchanged = await bookRepository.findById(id);
+    expect(unchanged.author_id).to.equal(1);
+    expect(unchanged.category_id).to.equal(1);
+  });
+
+  it('allows a valid filtered bulk update', async () => {
+    const created = await client.post('/books').send(givenBook()).expect(201);
+    const id = created.body.book_id;
+    createdIds.push(id);
+
+    const result = await client
+      .patch('/books')
+      .query({where: JSON.stringify({book_id: id})})
+      .send({title: 'Filtered bulk update'})
+      .expect(200);
+    expect(result.body).to.containEql({count: 1});
+
+    const updated = await bookRepository.findById(id);
+    expect(updated.title).to.equal('Filtered bulk update');
+    expect(updated.author_id).to.equal(1);
+    expect(updated.category_id).to.equal(1);
+  });
+
+  it('rejects missing and empty filters for bulk PATCH without changing rows', async () => {
+    const created = await client.post('/books').send(givenBook()).expect(201);
+    const id = created.body.book_id;
+    createdIds.push(id);
+    const originalTitle = created.body.title;
+
+    await client
+      .patch('/books')
+      .send({title: 'Should Not Update All'})
+      .expect(400);
+    await client
+      .patch('/books')
+      .query({where: JSON.stringify({})})
+      .send({title: 'Should Not Update All'})
+      .expect(400);
+
+    const unchanged = await bookRepository.findById(id);
+    expect(unchanged.title).to.equal(originalTitle);
   });
 });
