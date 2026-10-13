@@ -1,6 +1,6 @@
 # BMS Microservices — Assignment 14
 
-This repository implements the non-AWS Assignment 14 Book Management System as five Node.js/LoopBack services with per-service PostgreSQL databases, synchronous REST calls, RabbitMQ events, Docker Compose, and centralized observability.
+This repository implements the AWS Assignment 14 Book Management System as five Node.js/LoopBack services with per-service PostgreSQL databases, synchronous REST calls, RabbitMQ events, Docker Compose, and centralized observability.
 
 ## Architecture and service ports
 
@@ -76,6 +76,8 @@ npm run build
 
 The five applications are `services/api-gateway`, `services/books-service`, `services/authors-service`, `services/categories-service`, and `services/book-events-consumer`.
 
-## Assignment scope
+## AWS deployment and assignment scope
 
-This README documents the implementation present in this repository. AWS deployment is not included in the local Assignment 14 implementation. Authentication and authorization, including JWT, belong to Assignment 15 and are not implemented here.
+The Book Management System has been deployed to AWS. This repository documents the application and its local Docker Compose stack; it does not include the AWS infrastructure or deployment configuration. The deployed API URL, AWS region, and provisioned resource details are not recorded here.
+
+Authentication and authorization, including JWT, belong to Assignment 15 and are not implemented here.
