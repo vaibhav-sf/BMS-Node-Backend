@@ -1,19 +1,280 @@
 services:
+  opensearch:
+    image: opensearchproject/opensearch:3.9.0
+    container_name: bms-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - bms-opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - bms-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
   postgres:
     image: postgres:18
     container_name: bms-postgres
     restart: unless-stopped
-
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-
+      POSTGRES_DB: ${DB_NAME:-bms}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
     ports:
       - "5433:5432"
-
     volumes:
-      - bms_postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - bms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-postgres} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: bms-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - bms-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: bms-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - jaeger_data:/tmp
+    networks:
+      - bms-network
+
+  books-service:
+    image: bms-books-service:latest
+    build: ./services/books-service
+    container_name: bms-books-service
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r ./dist/instrumentation.js -r source-map-support/register .
+    environment:
+      PORT: 3001
+      HOST: 0.0.0.0
+      DB_HOST: bms-postgres
+      DB_PORT: 5432
+      DB_NAME: books_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      SERVICE_NAME: books-service
+      AUTHORS_SERVICE_URL: http://bms-authors-service:3002
+      CATEGORIES_SERVICE_URL: http://bms-categories-service:3003
+      RABBITMQ_URL: amqp://guest:guest@bms-rabbitmq:5672
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bms-jaeger:4318/v1/traces
+      OPENSEARCH_URL: http://bms-opensearch:9200
+      OPENSEARCH_INDEX: bms-logs
+    ports:
+      - "3001:3001"
+    networks:
+      - bms-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+
+  authors-service:
+    image: bms-authors-service:latest
+    build: ./services/authors-service
+    container_name: bms-authors-service
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r source-map-support/register .
+    environment:
+      PORT: 3002
+      HOST: 0.0.0.0
+      DB_HOST: bms-postgres
+      DB_PORT: 5432
+      DB_NAME: authors_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      SERVICE_NAME: authors-service
+      BOOKS_SERVICE_URL: http://bms-books-service:3001
+      OPENSEARCH_URL: http://bms-opensearch:9200
+      OPENSEARCH_INDEX: bms-logs
+    ports:
+      - "3002:3002"
+    networks:
+      - bms-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+
+  categories-service:
+    image: bms-categories-service:latest
+    build: ./services/categories-service
+    container_name: bms-categories-service
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r source-map-support/register .
+    environment:
+      PORT: 3003
+      HOST: 0.0.0.0
+      DB_HOST: bms-postgres
+      DB_PORT: 5432
+      DB_NAME: categories_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      SERVICE_NAME: categories-service
+      BOOKS_SERVICE_URL: http://bms-books-service:3001
+      OPENSEARCH_URL: http://bms-opensearch:9200
+      OPENSEARCH_INDEX: bms-logs
+    ports:
+      - "3003:3003"
+    networks:
+      - bms-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+
+  book-events-consumer:
+    image: bms-book-events-consumer:latest
+    build: ./services/book-events-consumer
+    container_name: bms-book-events-consumer
+    restart: unless-stopped
+    environment:
+      PORT: 3004
+      HOST: 0.0.0.0
+      RABBITMQ_URL: amqp://guest:guest@bms-rabbitmq:5672
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bms-jaeger:4318/v1/traces
+      OPENSEARCH_URL: http://bms-opensearch:9200
+      OPENSEARCH_INDEX: bms-logs
+      SERVICE_NAME: book-events-consumer
+    ports:
+      - "3004:3004"
+    networks:
+      - bms-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+
+  api-gateway:
+    image: bms-api-gateway:latest
+    build: ./services/api-gateway
+    container_name: bms-api-gateway
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      BOOKS_SERVICE_URL: http://bms-books-service:3001
+      AUTHORS_SERVICE_URL: http://bms-authors-service:3002
+      CATEGORIES_SERVICE_URL: http://bms-categories-service:3003
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bms-jaeger:4318/v1/traces
+      OPENSEARCH_URL: http://bms-opensearch:9200
+      OPENSEARCH_INDEX: bms-logs
+      SERVICE_NAME: api-gateway
+    ports:
+      - "3000:3000"
+    networks:
+      - bms-network
+    depends_on:
+      books-service:
+        condition: service_started
+      authors-service:
+        condition: service_started
+      categories-service:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus
+    container_name: bms-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - bms-network
+    depends_on:
+      - books-service
+      - book-events-consumer
+
+  grafana:
+    image: grafana/grafana
+    container_name: bms-grafana
+    restart: unless-stopped
+    ports:
+      - "3005:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - bms-network
+    depends_on:
+      - prometheus
+
+networks:
+  bms-network:
+    driver: bridge
 
 volumes:
-  bms_postgres_data: {}
+  postgres_data:
+    name: bms-node_bms_postgres_data
+
+  grafana_data:
+    name: bms-grafana-data
+
+  prometheus_data:
+
+  rabbitmq_data:
+
+  jaeger_data:
+
+  bms-opensearch-data:
+    name: bms-node_bms-opensearch-data

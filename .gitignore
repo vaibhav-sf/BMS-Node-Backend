@@ -2,4 +2,7 @@ node_modules/
 .env
 *.log
 *.session.sql
-services/
+.kilo/
+monitoring/grafana-backup/
+
+.vscode/

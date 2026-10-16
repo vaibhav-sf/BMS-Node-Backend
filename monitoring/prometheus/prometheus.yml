@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "books-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "bms-books-service:3001"
+
+  - job_name: "book-events-consumer"
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "bms-book-events-consumer:3004"
