@@ -1,3 +1,13 @@
+import {
+  AuthorizationBindings,
+  AuthorizationComponent,
+  AuthorizationDecision,
+} from '@loopback/authorization';
+import {
+  AuthenticationComponent,
+  registerAuthenticationStrategy,
+} from '@loopback/authentication';
+import {JwtAuthenticationStrategy} from './authentication/jwt-authentication.strategy';
 import {BootMixin} from '@loopback/boot';
 import {ApplicationConfig} from '@loopback/core';
 import {
@@ -20,6 +30,19 @@ export class ApiGatewayApplication extends BootMixin(
 
     // Set up the custom sequence
     this.sequence(MySequence);
+
+    // Register LoopBack authentication and our JWT strategy.
+    this.component(AuthenticationComponent);
+    registerAuthenticationStrategy(this, JwtAuthenticationStrategy);
+
+    // Configure authorization to deny access by default.
+    this.configure(AuthorizationBindings.COMPONENT).to({
+      precedence: AuthorizationDecision.DENY,
+      defaultDecision: AuthorizationDecision.DENY,
+    });
+
+    // Register the authorization component.
+    this.component(AuthorizationComponent);
 
     // Set up default home page
     this.static('/', path.join(__dirname, '../public'));

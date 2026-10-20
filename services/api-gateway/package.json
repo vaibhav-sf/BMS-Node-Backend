@@ -49,11 +49,14 @@
     "!*/__tests__"
   ],
   "dependencies": {
+    "@loopback/authentication": "^12.0.17",
+    "@loopback/authorization": "^0.16.16",
     "@loopback/boot": "^8.0.16",
     "@loopback/core": "^7.0.15",
     "@loopback/repository": "^8.0.15",
     "@loopback/rest": "^15.0.16",
     "@loopback/rest-explorer": "^8.0.16",
+    "@loopback/security": "^0.12.16",
     "@loopback/service-proxy": "^8.0.15",
     "@opensearch-project/opensearch": "^3.9.0",
     "@opentelemetry/api": "^1.9.1",
@@ -63,6 +66,7 @@
     "@opentelemetry/sdk-node": "^0.222.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
+    "jsonwebtoken": "^9.0.3",
     "tslib": "^2.0.0",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0"
@@ -71,6 +75,7 @@
     "@loopback/build": "^12.0.15",
     "@loopback/eslint-config": "^16.0.1",
     "@loopback/testlab": "^8.0.15",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.19.43",
     "eslint": "^8.57.1",
     "source-map-support": "^0.5.21",
