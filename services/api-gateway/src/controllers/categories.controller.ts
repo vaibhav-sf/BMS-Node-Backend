@@ -1,7 +1,11 @@
+import {authorize} from '@loopback/authorization';
+import {adminOnly} from '../authorization/admin-only.voter';
+import {authenticate} from '@loopback/authentication';
 import {service} from '@loopback/core';
 import {get, param, post, patch, del, requestBody} from '@loopback/rest';
 import {CategoriesApiService} from '../services/categories-api.service';
 
+@authenticate('jwt')
 export class CategoriesController {
   constructor(
     @service(CategoriesApiService)
@@ -19,6 +23,7 @@ export class CategoriesController {
   }
 
   @post('/api/categories')
+  @authorize({voters: [adminOnly]})
   async createCategory(
     @requestBody() category: Record<string, unknown>,
   ): Promise<unknown> {
@@ -26,6 +31,7 @@ export class CategoriesController {
   }
 
   @patch('/api/categories/{id}')
+  @authorize({voters: [adminOnly]})
   async updateCategory(
     @param.path.number('id') id: number,
     @requestBody() updates: Record<string, unknown>,
@@ -34,6 +40,7 @@ export class CategoriesController {
   }
 
   @del('/api/categories/{id}')
+  @authorize({voters: [adminOnly]})
   async deleteCategory(@param.path.number('id') id: number): Promise<void> {
     await this.categoriesApiService.deleteCategory(id);
   }

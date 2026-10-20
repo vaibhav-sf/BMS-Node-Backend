@@ -1,3 +1,6 @@
+import {authorize} from '@loopback/authorization';
+import {adminOnly} from '../authorization/admin-only.voter';
+import {authenticate} from '@loopback/authentication';
 import {service} from '@loopback/core';
 import {
   get,
@@ -13,6 +16,7 @@ import {inject} from '@loopback/core';
 import {BooksApiService} from '../services/books-api.service';
 import {logger} from '../services/logger.service';
 
+@authenticate('jwt')
 export class BooksController {
   constructor(
     @service(BooksApiService)
@@ -30,6 +34,7 @@ export class BooksController {
     return this.booksApiService.getBookById(id);
   }
   @post('/api/books')
+  @authorize({voters: [adminOnly]})
   async createBook(
     @requestBody() book: Record<string, unknown>,
   ): Promise<unknown> {
@@ -39,6 +44,7 @@ export class BooksController {
     return createdBook;
   }
   @patch('/api/books/{id}')
+  @authorize({voters: [adminOnly]})
   async updateBook(
     @param.path.number('id') id: number,
     @requestBody() updates: Record<string, unknown>,
@@ -46,6 +52,7 @@ export class BooksController {
     return this.booksApiService.updateBook(id, updates);
   }
   @del('/api/books/{id}')
+  @authorize({voters: [adminOnly]})
   async deleteBook(@param.path.number('id') id: number): Promise<void> {
     await this.booksApiService.deleteBook(id);
   }

@@ -17,7 +17,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"
+          "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1",
         ]
       interval: 10s
       timeout: 5s
@@ -30,7 +30,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-bms}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
     ports:
       - "5433:5432"
     volumes:
@@ -39,7 +39,11 @@ services:
     networks:
       - bms-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-postgres} -d postgres"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U ${DB_USER:-postgres} -d postgres",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -93,7 +97,7 @@ services:
       DB_PORT: 5432
       DB_NAME: books_db
       DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
       SERVICE_NAME: books-service
       AUTHORS_SERVICE_URL: http://bms-authors-service:3002
       CATEGORIES_SERVICE_URL: http://bms-categories-service:3003
@@ -101,8 +105,6 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bms-jaeger:4318/v1/traces
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
-    ports:
-      - "3001:3001"
     networks:
       - bms-network
     depends_on:
@@ -112,6 +114,8 @@ services:
         condition: service_healthy
       opensearch:
         condition: service_healthy
+      auth-service:
+        condition: service_started
 
   authors-service:
     image: bms-authors-service:latest
@@ -129,13 +133,11 @@ services:
       DB_PORT: 5432
       DB_NAME: authors_db
       DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
       SERVICE_NAME: authors-service
       BOOKS_SERVICE_URL: http://bms-books-service:3001
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
-    ports:
-      - "3002:3002"
     networks:
       - bms-network
     depends_on:
@@ -160,13 +162,11 @@ services:
       DB_PORT: 5432
       DB_NAME: categories_db
       DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-replace_with_a_local_password}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
       SERVICE_NAME: categories-service
       BOOKS_SERVICE_URL: http://bms-books-service:3001
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
-    ports:
-      - "3003:3003"
     networks:
       - bms-network
     depends_on:
@@ -200,6 +200,41 @@ services:
       opensearch:
         condition: service_healthy
 
+  auth-service:
+    image: bms-auth-service:latest
+    build: ./services/auth-service
+    container_name: bms-auth-service
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - node ./dist/migrate && node -r source-map-support/register .
+    environment:
+      PORT: 3006
+      HOST: 0.0.0.0
+      DB_HOST: bms-postgres
+      DB_PORT: 5432
+      DB_NAME: auth_db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in your .env file}
+      JWT_SECRET: ${JWT_SECRET}
+      ARC_OIDC_ISSUER_URL: ${ARC_OIDC_ISSUER_URL:-}
+      ARC_OIDC_CLIENT_ID: ${ARC_OIDC_CLIENT_ID:-}
+      ARC_OIDC_CLIENT_SECRET: ${ARC_OIDC_CLIENT_SECRET:-}
+      ARC_OIDC_CLIENT_AUTH_METHOD: ${ARC_OIDC_CLIENT_AUTH_METHOD:-}
+      ARC_OIDC_REDIRECT_URI: ${ARC_OIDC_REDIRECT_URI:-}
+      ARC_OIDC_SCOPES: ${ARC_OIDC_SCOPES:-}
+      ARC_OIDC_COOKIE_PATH: /api/auth/arc
+      OAUTH_TRANSACTION_ENCRYPTION_KEY: ${OAUTH_TRANSACTION_ENCRYPTION_KEY:-}
+      SERVICE_NAME: auth-service
+    ports:
+      - "127.0.0.1:3006:3006"
+    networks:
+      - bms-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api-gateway:
     image: bms-api-gateway:latest
     build: ./services/api-gateway
@@ -211,6 +246,8 @@ services:
       BOOKS_SERVICE_URL: http://bms-books-service:3001
       AUTHORS_SERVICE_URL: http://bms-authors-service:3002
       CATEGORIES_SERVICE_URL: http://bms-categories-service:3003
+      AUTH_SERVICE_URL: http://bms-auth-service:3006
+      JWT_SECRET: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bms-jaeger:4318/v1/traces
       OPENSEARCH_URL: http://bms-opensearch:9200
       OPENSEARCH_INDEX: bms-logs
