@@ -9,6 +9,8 @@ import {RestApplication} from '@loopback/rest';
 import {ServiceMixin} from '@loopback/service-proxy';
 import path from 'path';
 import {MySequence} from './sequence';
+import {ExternalUserProvisioner} from './services/external-user-provisioner';
+import {ExternalAuthenticationStrategySelector} from './services/external-authentication-strategy.selector';
 
 export {ApplicationConfig};
 
@@ -20,6 +22,8 @@ export class AuthServiceApplication extends BootMixin(
 
     // Set up the custom sequence
     this.sequence(MySequence);
+    this.service(ExternalUserProvisioner);
+    this.service(ExternalAuthenticationStrategySelector);
 
     // Set up default home page
     this.static('/', path.join(__dirname, '../public'));
